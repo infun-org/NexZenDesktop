@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>New Tab</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; background: #fff; overflow: hidden; }
+    canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+    #boot { position: fixed; right: 24px; bottom: 24px; color: #6b7280; font: 13px/1.4 sans-serif; pointer-events: none; }
+    #light-toggle, #light-panel {
+      position: fixed; z-index: 20; left: 12px; top: 12px;
+      font: 12px/1.35 system-ui, sans-serif; color: #333;
+    }
+    #light-toggle {
+      width: 36px; height: 36px; border-radius: 10px; border: 1px solid #d8d8d8;
+      background: #fff; cursor: pointer; box-shadow: 0 4px 12px #00000014;
+    }
+    #light-toggle.hidden, #light-panel.hidden { display: none; }
+    #light-panel {
+      width: min(248px, calc(100vw - 24px));
+      background: #fff; border: 1px solid #e4e4e4; border-radius: 14px;
+      padding: 12px; box-shadow: 0 8px 24px #0000001a;
+    }
+    #light-panel .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+    #light-panel .head strong { font-size: 13px; }
+    #light-panel .head button, #light-panel .foot button {
+      border: 0; background: #f3f3f3; border-radius: 8px; padding: 4px 8px; cursor: pointer; color: #333;
+    }
+    #light-panel label { display: grid; grid-template-columns: 90px 1fr 36px; gap: 6px; align-items: center; margin: 7px 0; }
+    #light-panel label span:last-child { text-align: right; font-variant-numeric: tabular-nums; color: #666; }
+    #light-panel input[type=range] { width: 100%; accent-color: #43a047; }
+    #light-panel .foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
+    #light-panel .status { color: #8a8a8a; font-size: 11px; flex: 1; }
+    #light-save { background: #c4f0d0 !important; font-weight: 600; padding: 6px 14px !important; }
+    html.embed #light-panel, html.studio #light-panel {
+      top: 16px; left: 16px;
+      width: min(280px, 36vw);
+      max-height: calc(100% - 32px);
+      overflow: auto;
+      padding: 16px;
+    }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./vendor/three.module.js"
+    }
+  }
+  </script>
+</head>
+<body>
+  <script>
+    if (/\b(embed|studio|ai)=1\b/.test(location.search)) {
+      document.documentElement.style.background = '#f3f3f3';
+      document.body.style.background = '#f3f3f3';
+      const boot = document.createElement('div');
+      boot.id = 'boot';
+      document.body.appendChild(boot);
+      const script = document.createElement('script');
+      script.type = 'module';
+      script.src = './companion.js';
+      document.body.appendChild(script);
+    }
+  </script>
+</body>
+</html>

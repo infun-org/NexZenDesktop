@@ -1,0 +1,145 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:converters="clr-namespace:NexZen.Desktop.Converters"
+             xmlns:notifications="using:Avalonia.Controls.Notifications"
+             x:Class="NexZen.Desktop.App">
+             <!-- RequestedThemeVariant="Default", "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <converters:StringGeometryConverter x:Key="StringGeometryConverter" />
+            <converters:PathToBitmapConverter x:Key="PathToBitmapConverter" />
+            <ControlTheme x:Key="{x:Type notifications:NotificationCard}" TargetType="notifications:NotificationCard">
+                <Setter Property="UseLayoutRounding" Value="True"/>
+                <Setter Property="Width" Value="360"/>
+                <Setter Property="Foreground" Value="#2A2A2A"/>
+                <Setter Property="Background" Value="#F3F3F3"/>
+                <Setter Property="BorderBrush" Value="#D8D8D8"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="16"/>
+                <Setter Property="RenderTransformOrigin" Value="50%,75%"/>
+                <Setter Property="Template">
+                    <ControlTemplate>
+                        <LayoutTransformControl Name="PART_LayoutTransformControl" UseRenderTransform="True">
+                            <Border CornerRadius="{TemplateBinding CornerRadius}"
+                                    BoxShadow="0 2 10 0 #18000000"
+                                    Margin="20">
+                                <Border Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                        CornerRadius="{TemplateBinding CornerRadius}"
+                                        ClipToBounds="True">
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <Border Name="AccentBar" Width="6" Margin="10,14,0,14"
+                                                CornerRadius="3" Background="#BFE4F6"/>
+                                        <ContentPresenter Grid.Column="1" Name="PART_ContentPresenter"
+                                                          Padding="14,16,16,16"
+                                                          Content="{TemplateBinding Content}"/>
+                                    </Grid>
+                                </Border>
+                            </Border>
+                        </LayoutTransformControl>
+                    </ControlTemplate>
+                </Setter>
+                <Style Selector="^:success /template/ Border#AccentBar">
+                    <Setter Property="Background" Value="#C4F0D0"/>
+                </Style>
+                <Style Selector="^:information /template/ Border#AccentBar">
+                    <Setter Property="Background" Value="#BFE4F6"/>
+                </Style>
+                <Style Selector="^:warning /template/ Border#AccentBar">
+                    <Setter Property="Background" Value="#F3C7BC"/>
+                </Style>
+                <Style Selector="^:error /template/ Border#AccentBar">
+                    <Setter Property="Background" Value="#EBB3A6"/>
+                </Style>
+                <ControlTheme.Animations>
+                    <Animation Duration="0:0:0.45" Easing="QuadraticEaseIn" FillMode="Forward">
+                        <KeyFrame Cue="0%">
+                            <Setter Property="Opacity" Value="0"/>
+                            <Setter Property="TranslateTransform.Y" Value="20"/>
+                        </KeyFrame>
+                        <KeyFrame Cue="100%">
+                            <Setter Property="Opacity" Value="1"/>
+                            <Setter Property="TranslateTransform.Y" Value="0"/>
+                        </KeyFrame>
+                    </Animation>
+                </ControlTheme.Animations>
+                <Style Selector="^[IsClosing=true] /template/ LayoutTransformControl#PART_LayoutTransformControl">
+                    <Style.Animations>
+                        <Animation Duration="0:0:0.45" Easing="QuadraticEaseOut" FillMode="Forward">
+                            <KeyFrame Cue="100%">
+                                <Setter Property="Opacity" Value="0"/>
+                                <Setter Property="TranslateTransform.Y" Value="12"/>
+                            </KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+                <Style Selector="^[IsClosing=true]">
+                    <Style.Animations>
+                        <Animation Duration="0:0:0.5" Easing="QuadraticEaseOut" FillMode="Forward">
+                            <KeyFrame Cue="100%">
+                                <Setter Property="IsClosed" Value="True"/>
+                            </KeyFrame>
+                        </Animation>
+                    </Style.Animations>
+                </Style>
+            </ControlTheme>
+        </ResourceDictionary>
+    </Application.Resources>
+
+    <TrayIcon.Icons>
+        <TrayIcons>
+            <TrayIcon Icon="avares://NexZen.Desktop/Assets/icon32.ico" 
+                      ToolTipText="NexZen Desktop"
+                      Clicked="OnTrayIconClicked">
+                <TrayIcon.Menu>
+                    <NativeMenu>
+                        <NativeMenuItem Header="Open Browser" Click="OnShowMainWindow" />
+                        <NativeMenuItem Header="Open NexShare" Click="OnShowNexShareWindow" />
+                        <NativeMenuItem Header="Open 3D Companion" Click="OnShowCompanionStudio" />
+                        <!--<NativeMenuItem Header="Run Benchmark" Click="OnShowBenchmarkWindow" />-->
+                        <NativeMenuItemSeparator />
+                        <NativeMenuItem Header="Exit" Click="OnExitApplication" />
+                    </NativeMenu>
+                </TrayIcon.Menu>
+            </TrayIcon>
+        </TrayIcons>
+    </TrayIcon.Icons>
+
+    <Application.Styles>
+        <FluentTheme />
+        <StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Fluent/Fluent.xaml" />
+
+        <Style Selector="NotificationCard StackPanel">
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="Spacing" Value="0"/>
+        </Style>
+        <Style Selector="NotificationCard StackPanel > TextBlock:nth-child(1)">
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="Foreground" Value="#2A2A2A"/>
+            <Setter Property="Margin" Value="0"/>
+        </Style>
+        <Style Selector="NotificationCard StackPanel > TextBlock:nth-child(2)">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="#4A4A4A"/>
+            <Setter Property="Margin" Value="0,10,0,0"/>
+        </Style>
+        <Style Selector="NotificationCard Button.CopyToast">
+            <Setter Property="Background" Value="#BFE4F6"/>
+            <Setter Property="Foreground" Value="#1F3A4D"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="16,10"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="Margin" Value="0,12,0,0"/>
+        </Style>
+        <Style Selector="NotificationCard Button.CopyToast:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#A9D7EE"/>
+        </Style>
+    </Application.Styles>
+</Application>

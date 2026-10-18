@@ -1,0 +1,80 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NexShare</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="title">NexShare</div>
+      <div id="info" class="muted"></div>
+    </div>
+
+    <div id="pair">
+      <div class="card">
+        <div class="row">
+          <div class="label">Pairing</div>
+          <div id="pairState" class="muted">Requesting approval…</div>
+        </div>
+        <div class="row">
+          <button id="btnRetry">Retry</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="app" class="hidden">
+      <div class="grid">
+        <div class="col">
+          <div class="card chatCard">
+            <div class="row">
+              <div class="label">Chat</div>
+              <div id="wsState" class="muted"></div>
+            </div>
+            <div id="log" class="log chatLog"></div>
+            <div class="row">
+              <input id="text" type="text" placeholder="Type message">
+              <button id="btnSend">Send</button>
+            </div>
+          </div>
+
+          <div class="card uploadCard">
+            <div class="row">
+              <div class="label">Upload</div>
+              <div class="muted">Android will need to tap to accept</div>
+            </div>
+            <div class="row">
+              <input id="file" type="file">
+              <button id="btnOffer">Offer</button>
+            </div>
+            <div id="uploadState" class="muted"></div>
+          </div>
+        </div>
+
+        <div class="col">
+          <div class="card previewCard">
+            <div class="row">
+              <div class="label">Preview</div>
+              <div id="previewMeta" class="muted"></div>
+            </div>
+            <div id="preview" class="previewBox">
+              <div class="muted">Select a file to preview</div>
+            </div>
+          </div>
+
+          <div class="card downloadsCard">
+            <div class="row">
+              <div class="label">Downloads</div>
+              <div class="muted">From Android</div>
+            </div>
+            <div id="downloads" class="downloadsGrid"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>

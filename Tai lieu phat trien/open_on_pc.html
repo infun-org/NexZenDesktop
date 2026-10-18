@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Open on PC</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0b1020;
+      --card: rgba(255, 255, 255, 0.08);
+      --card-border: rgba(255, 255, 255, 0.14);
+      --text: rgba(255, 255, 255, 0.92);
+      --muted: rgba(255, 255, 255, 0.68);
+      --btn: rgba(255, 255, 255, 0.12);
+      --btn-border: rgba(255, 255, 255, 0.18);
+      --btn-hover: rgba(255, 255, 255, 0.18);
+      --primary: #5aa7ff;
+      --danger: #ff6b6b;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f6f7fb;
+        --card: rgba(0, 0, 0, 0.04);
+        --card-border: rgba(0, 0, 0, 0.08);
+        --text: rgba(0, 0, 0, 0.88);
+        --muted: rgba(0, 0, 0, 0.56);
+        --btn: rgba(0, 0, 0, 0.04);
+        --btn-border: rgba(0, 0, 0, 0.10);
+        --btn-hover: rgba(0, 0, 0, 0.07);
+        --primary: #246bff;
+        --danger: #d64545;
+      }
+    }
+    html, body {
+    height: 100%;
+    margin: 0;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    border-radius: 15px;
+    background: linear-gradient(to bottom, rgb(229 229 229 / 91%), rgb(135 135 135 / 88%)), rgba(255, 255, 255, 1);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    }
+    .wrap {
+      min-height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 15px;
+      box-sizing: border-box;
+    }
+    .card {
+    width: 100%;
+    max-width: 560px;
+    padding: 18px;
+    box-sizing: border-box;
+    border-radius: 15px;
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.91), rgba(220, 220, 220, 0.88)), rgba(255, 255, 255, 1);
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    }
+    .head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .brand {
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      font-size: 16px;
+      margin: 0;
+      color: #757575;
+    }
+    .sub {
+      margin: 6px 0 0 0;
+      font-size: 13px;
+      color: #757575;
+      line-height: 1.35;
+    }
+    .meta {
+    padding: 12px;
+    overflow: hidden;
+    margin: 12px 0;
+    background: linear-gradient(to bottom, #ffffff70, #ababab3a), #FFFFFF22;
+    border: 1px solid #99999980;
+    border-radius: 10px;
+    }
+    @media (prefers-color-scheme: light) {
+      .meta { background: rgba(255, 255, 255, 0.6); }
+    }
+    .label {
+      font-size: 12px;
+      color: #414141;
+      margin: 0 0 6px 0;
+    }
+    .title {
+      margin: 0 0 10px 0;
+      font-size: 15px;
+      font-weight: 600;
+      word-break: break-word;
+      color: #414141;
+    }
+    .url {
+      margin: 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: #414141;
+    }
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    button {
+    color: #757575;
+    padding: 12px 12px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    border: 2px solid #99999980;
+    border-radius: 10px;
+    }
+    button:hover { background: var(--btn-hover); }
+    .primary {
+    border-color: rgb(59 127 20 / 45%);
+    background: linear-gradient(to bottom, #FFFFFF70, #FFFFFF3A), #FFFFFF22;
+    }
+    .primary:hover {
+    border-color: rgb(59 127 20 / 45%);
+    background: linear-gradient(to bottom, #FFFFFF70, #FFFFFF3A), #FFFFFF22;
+    }
+    .danger {
+    border-color: rgb(159 17 17 / 45%);
+    background: linear-gradient(to bottom, #FFFFFF70, #FFFFFF3A), #FFFFFF22;
+    }
+    .danger:hover { background: rgba(255, 107, 107, 0.18); }
+    .foot {
+      margin-top: 14px;
+      font-size: 12px;
+      color: #757575;
+      line-height: 1.35;
+    }
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .pill {
+    font-size: 12px;
+    color: rgb(0 0 0 / 68%);
+    padding: 6px 10px;
+    user-select: none;
+    background: linear-gradient(to bottom, #FFFFFF70, #e5e5e5), #FFFFFF22;
+    border: 1px solid #99999980;
+    border-radius: 10px;
+    font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="head">
+        <div>
+          <p class="brand" id="txtBrand">Open on PC</p>
+          <p class="sub" id="txtSub">Confirm to open a link sent from NexZen/NexShare.</p>
+        </div>
+        <div class="pill" id="status">Waiting…</div>
+      </div>
+
+      <div class="meta">
+        <p class="label" id="lblTitle">Title</p>
+        <p class="title" id="pageTitle">—</p>
+        <p class="label" id="lblUrl">URL</p>
+        <p class="url" id="pageUrl">—</p>
+      </div>
+
+      <div class="actions">
+        <button class="primary" id="btnOpen">Open</button>
+        <button class="danger" id="btnDismiss">Dismiss</button>
+      </div>
+
+      <div class="foot">
+        <div class="row">
+          <span id="ts" class="pill">—</span>
+        </div>
+      </div>
+
+      <div class="meta" id="dbgWrap" style="display:none">
+        <p class="label">Keylog</p>
+        <p class="url" id="dbgLog"></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const qs = new URLSearchParams(location.search);
+    const title = qs.get("title") || "";
+    const url = qs.get("url") || "";
+    const token = qs.get("token") || "";
+    const handoffId = qs.get("id") || "";
+    const debug = (qs.get("debug") === "1") || (localStorage.getItem("nexshare_debug") === "1");
+    const langParam = (qs.get("lang") || "").trim().toLowerCase();
+
+    const el = (id) => document.getElementById(id);
+    const pushLog = (text) => {
+      const msg = `[${new Date().toISOString()}] ${text}`;
+      try { console.log("[OpenOnPC]", msg); } catch (e) {}
+      try {
+        const k = "nexshare_open_on_pc_log";
+        const raw = sessionStorage.getItem(k);
+        let arr = [];
+        try { arr = raw ? JSON.parse(raw) : []; } catch (e) { arr = []; }
+        arr.push(msg);
+        if (arr.length > 200) arr = arr.slice(arr.length - 200);
+        sessionStorage.setItem(k, JSON.stringify(arr));
+      } catch (e) {}
+      try {
+        if (debug) {
+          const wrap = el("dbgWrap");
+          const out = el("dbgLog");
+          if (wrap && out) {
+            wrap.style.display = "block";
+            out.textContent = msg + "\n" + (out.textContent || "");
+          }
+        }
+      } catch (e) {}
+    };
+    let i18n = null;
+    const pickLang = () => {
+      if (langParam.startsWith("vi")) return "vi";
+      if (langParam.startsWith("en")) return "en";
+      const nav = (navigator.language || "en").toLowerCase();
+      return nav.startsWith("vi") ? "vi" : "en";
+    };
+    const lang = pickLang();
+    try { document.documentElement.lang = lang; } catch (e) {}
+
+    const applyI18n = () => {
+      if (!i18n) return;
+      if (i18n.title_open_pc) {
+        document.title = i18n.title_open_pc;
+        const b = el("txtBrand");
+        if (b) b.textContent = i18n.title_open_pc;
+      }
+      if (i18n.sub_open_pc) {
+        const s = el("txtSub");
+        if (s) s.textContent = i18n.sub_open_pc;
+      }
+      if (i18n.titlepage_open_pc) {
+        const lt = el("lblTitle");
+        if (lt) lt.textContent = i18n.titlepage_open_pc;
+      }
+      if (i18n.urlpage_open_pc) {
+        const lu = el("lblUrl");
+        if (lu) lu.textContent = i18n.urlpage_open_pc;
+      }
+      if (i18n.open_pc) el("btnOpen").textContent = i18n.open_pc;
+      if (i18n.dismiss_pc) el("btnDismiss").textContent = i18n.dismiss_pc;
+      if (i18n.open_pc_hint) {
+        const h = el("hint");
+        if (h) h.textContent = i18n.open_pc_hint;
+      }
+    };
+
+    const renderMeta = () => {
+      const t = title.trim() ? title : ((i18n && i18n.open_pc_new_tab) ? i18n.open_pc_new_tab : "New Tab");
+      const u = url.trim() ? url : "—";
+      el("pageTitle").textContent = t;
+      el("pageUrl").textContent = u;
+    };
+
+    renderMeta();
+    el("status").textContent = "Ready";
+    el("ts").textContent = new Date().toLocaleTimeString();
+
+    el("btnOpen").addEventListener("click", () => {
+      pushLog("click Open");
+      if (!url) return;
+      window.open(url, "_blank", "noopener,noreferrer");
+    });
+
+    el("btnDismiss").addEventListener("click", () => {
+      pushLog("click Dismiss");
+      if (!token) {
+        el("status").textContent = (i18n && i18n.open_pc_status_dismissed) ? i18n.open_pc_status_dismissed : "Dismissed";
+        try { window.close(); } catch (e) {}
+        return;
+      }
+      el("status").textContent = (i18n && i18n.open_pc_status_dismissing) ? i18n.open_pc_status_dismissing : "Dismissing…";
+      fetch("/api/handoff/dismiss?id=" + encodeURIComponent(handoffId) + "&token=" + encodeURIComponent(token))
+        .then(() => {
+          el("status").textContent = (i18n && i18n.open_pc_status_dismissed) ? i18n.open_pc_status_dismissed : "Dismissed";
+          pushLog("dismiss ok");
+          try { window.close(); } catch (e) {}
+        })
+        .catch(() => {
+          el("status").textContent = (i18n && i18n.open_pc_status_dismissed) ? i18n.open_pc_status_dismissed : "Dismissed";
+          pushLog("dismiss failed");
+          try { window.close(); } catch (e) {}
+        });
+    });
+
+    try {
+      if (debug) {
+        const raw = sessionStorage.getItem("nexshare_open_on_pc_log");
+        const arr = raw ? JSON.parse(raw) : [];
+        if (Array.isArray(arr) && arr.length > 0) {
+          const wrap = el("dbgWrap");
+          const out = el("dbgLog");
+          if (wrap && out) {
+            wrap.style.display = "block";
+            out.textContent = arr.slice(-120).reverse().join("\n") + (out.textContent ? ("\n" + out.textContent) : "");
+          }
+        }
+      }
+    } catch (e) {}
+    pushLog("loaded open_on_pc.html path=" + location.pathname + " handoffId=" + handoffId + " hasUrl=" + (!!url) + " hasToken=" + (!!token) + " ref=" + (document.referrer || ""));
+
+    fetch("/api/i18n/open_on_pc?lang=" + encodeURIComponent(lang))
+      .then(r => r.text().then(t => ({ ok: r.ok, t })))
+      .then(({ ok, t }) => {
+        if (!ok) return;
+        let j = null;
+        try { j = JSON.parse(t); } catch (e) {}
+        if (!j) return;
+        i18n = j;
+        applyI18n();
+        renderMeta();
+        if (i18n.open_pc_status_ready) el("status").textContent = i18n.open_pc_status_ready;
+        pushLog("i18n loaded lang=" + (i18n.lang || lang));
+      })
+      .catch(() => {});
+  </script>
+</body>
+</html>

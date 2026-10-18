@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <NuGetCacheDir Condition="'$(NUGET_PACKAGES)' != ''">$(NUGET_PACKAGES)/</NuGetCacheDir>
+    <NuGetCacheDir Condition="'$(NuGetCacheDir)' == ''">$(HOME)/.nuget/packages/</NuGetCacheDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Xilium.CefGlue.Avalonia">
+      <HintPath>$(NuGetCacheDir)cefglue.avalonia/120.6099.211/lib/net8.0/Xilium.CefGlue.Avalonia.dll</HintPath>
+    </Reference>
+    <Reference Include="Xilium.CefGlue.Common">
+      <HintPath>$(NuGetCacheDir)cefglue.common/120.6099.211/lib/net8.0/Xilium.CefGlue.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="Xilium.CefGlue">
+      <HintPath>$(NuGetCacheDir)cefglue.common/120.6099.211/lib/net8.0/Xilium.CefGlue.dll</HintPath>
+    </Reference>
+    <Reference Include="Xilium.CefGlue.Common.Shared">
+      <HintPath>$(NuGetCacheDir)cefglue.common/120.6099.211/lib/net8.0/Xilium.CefGlue.Common.Shared.dll</HintPath>
+    </Reference>
+    <Reference Include="Avalonia.Controls">
+      <HintPath>$(NuGetCacheDir)avalonia/11.1.3/lib/net8.0/Avalonia.Controls.dll</HintPath>
+    </Reference>
+    <Reference Include="Avalonia.Base">
+      <HintPath>$(NuGetCacheDir)avalonia/11.1.3/lib/net8.0/Avalonia.Base.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>

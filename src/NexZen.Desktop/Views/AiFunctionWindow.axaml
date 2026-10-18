@@ -1,0 +1,20 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:views="using:NexZen.Desktop.Views"
+        mc:Ignorable="d" d:DesignWidth="1296" d:DesignHeight="960"
+        Width="1296" Height="960"
+        MinWidth="936" MinHeight="520"
+        x:Class="NexZen.Desktop.Views.AiFunctionWindow"
+        Title="AI Function"
+        Icon="avares://NexZen.Desktop/Assets/icon64.ico"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
+        WindowDecorations="None"
+        ShowInTaskbar="False"
+        Topmost="True"
+        WindowStartupLocation="Manual"
+        Deactivated="Window_Deactivated">
+    <views:AiFunctionView />
+</Window>

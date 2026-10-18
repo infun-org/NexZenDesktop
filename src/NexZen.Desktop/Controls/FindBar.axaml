@@ -1,0 +1,64 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="NexZen.Desktop.Controls.FindBar">
+    <UserControl.Styles>
+        <Style Selector="Button.find">
+            <Setter Property="Width" Value="30"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Margin" Value="2,0,0,0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="15"/>
+            <Setter Property="Foreground" Value="#333333"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Focusable" Value="False"/>
+        </Style>
+        <Style Selector="Button.find:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#C0DBF3"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Border Background="#FFFFFF"
+            BorderBrush="#C7C7C7"
+            BorderThickness="1"
+            CornerRadius="8"
+            Padding="8,6"
+            Margin="20"
+            BoxShadow="0 2 20 0 #66000000">
+        <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" MinWidth="450">
+            <TextBox Name="QueryBox"
+                     Grid.Column="0"
+                     PlaceholderText="Find in page"
+                     Background="Transparent"
+                     BorderThickness="0"
+                     FontSize="16"
+                     Foreground="#333333"
+                     VerticalAlignment="Center"
+                     TextChanged="QueryBox_TextChanged"/>
+            <TextBlock Name="MatchLabel"
+                       Grid.Column="1"
+                       MinWidth="20"
+                       Margin="8,0,2,0"
+                       FontSize="16"
+                       Foreground="#373737"
+                       VerticalAlignment="Center"
+                       TextAlignment="Right"
+                       IsHitTestVisible="False"/>
+            <Button Name="UpButton" Grid.Column="2" Classes="find" ToolTip.Tip="Previous match" Click="UpButton_Click">
+                <PathIcon Width="14" Height="14" Foreground="#333333"
+                          Data="M7.41,15.41L12,10.83L16.59,15.41L18,14L12,8L6,14L7.41,15.41Z"/>
+            </Button>
+            <Button Name="DownButton" Grid.Column="3" Classes="find" ToolTip.Tip="Next match" Click="DownButton_Click">
+                <PathIcon Width="14" Height="14" Foreground="#333333"
+                          Data="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"/>
+            </Button>
+            <Button Name="CloseButton" Grid.Column="4" Classes="find" ToolTip.Tip="Close" Click="CloseButton_Click">
+                <PathIcon Width="14" Height="14" Foreground="#333333"
+                          Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/>
+            </Button>
+        </Grid>
+    </Border>
+</UserControl>

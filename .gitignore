@@ -1,0 +1,50 @@
+# Build output
+bin/
+obj/
+publish/
+src/libs_cefglue/Nuget/output/
+*.user
+.vs/
+.idea/
+
+# CEF / Chromium runtime data written next to the app
+DawnCache/
+GPUCache/
+CefRootCache/
+MediaDeviceSalts*
+cef.log
+
+# Local databases and logs
+*.db
+*.db-shm
+*.db-wal
+*.log
+nexzen_log.txt
+build_errors.txt
+
+# Secrets (never commit API keys)
+*.secret
+.env
+.env.*
+
+# Manual backups made before edits (git keeps history now)
+*.bl1
+*.bl2
+*.bl3
+*.bl4
+*.bl5
+*.bl6
+*.bl7
+*.bl8
+*.bl9
+
+# Design sources
+*.psd
+
+# Scratch files in the repository root
+/test-*.sh
+/test*.sh
+/test*.cs
+/test_*.cs
+/scratch_*.cs
+/dotnet-install.sh

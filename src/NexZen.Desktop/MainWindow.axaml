@@ -1,0 +1,231 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:NexZen.Application.ViewModels"
+        xmlns:controls="using:NexZen.Desktop.Controls"
+        xmlns:views="using:NexZen.Desktop.Views"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="NexZen.Desktop.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="NexZen Desktop"
+        Icon="avares://NexZen.Desktop/Assets/icon64.ico">
+
+    <Grid Name="MainGrid">
+        <!-- Browser will be inserted at index 0 -->
+
+        <Popup Name="ProgressBarPopup"
+               PlacementTarget="{Binding #MainGrid}"
+               Placement="Bottom"
+               IsOpen="False"
+               IsLightDismissEnabled="False"
+               VerticalOffset="-40">
+            <Border Margin="10" 
+                    BoxShadow="0 4 15 0 #40000000"
+                    CornerRadius="10">
+                <ProgressBar Height="20"
+                             Width="500"
+                             IsIndeterminate="False"
+                             Minimum="0"
+                             Maximum="100"
+                             Value="{Binding ActiveTab.LoadingProgress}"
+                             Background="#E0E0E0"
+                             CornerRadius="10">
+                    <ProgressBar.Foreground>
+                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                            <GradientStop Offset="0" Color="#88bee5" />
+                            <GradientStop Offset="1" Color="#95C174" />
+                        </LinearGradientBrush>
+                    </ProgressBar.Foreground>
+                </ProgressBar>
+            </Border>
+        </Popup>
+
+        <Control Name="BottomLeftAnchor" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="0" Height="0" Margin="20,0,0,20"/>
+
+        <Popup Name="DownloadDialogPopup"
+               PlacementTarget="{Binding #BottomLeftAnchor}"
+               Placement="TopEdgeAlignedLeft"
+               IsOpen="{Binding IsAnyDownloadDialogVisible}"
+               IsLightDismissEnabled="False">
+            <ItemsControl ItemsSource="{Binding Downloads}" MaxHeight="600">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Vertical" Spacing="10" VerticalAlignment="Bottom" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Grid IsVisible="{Binding IsDialogVisible}">
+                            <!-- Expanded State -->
+                            <Border Background="#F9F9F9"
+                                    BorderBrush="#CCCCCC"
+                                    BorderThickness="1"
+                                    BoxShadow="0 4 15 0 #40000000"
+                                    CornerRadius="10"
+                                    Padding="16"
+                                    Width="400"
+                                    IsVisible="{Binding IsDialogExpanded}">
+                                <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding FileName}" FontWeight="Bold" FontSize="14" TextTrimming="CharacterEllipsis" Margin="0,0,0,8" />
+                                    <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-4,-4,0">
+                                        <Button Command="{Binding PauseCommand}" IsVisible="{Binding IsDownloading}" Background="Transparent" Padding="0" Width="20" Height="20" Cursor="Hand" ToolTip.Tip="Pause">
+                                            <PathIcon Data="M14,19H18V5H14M6,19H10V5H6V19Z" Width="12" Height="12" Foreground="#999" />
+                                        </Button>
+                                        <Button Command="{Binding ResumeCommand}" IsVisible="{Binding IsPaused}" Background="Transparent" Padding="0" Width="20" Height="20" Cursor="Hand" ToolTip.Tip="Resume">
+                                            <PathIcon Data="M8,5.14V19.14L19,12.14L8,5.14Z" Width="12" Height="12" Foreground="#999" />
+                                        </Button>
+                                        <Button Command="{Binding CancelCommand}" IsVisible="{Binding IsNotCompleted}" Background="Transparent" Padding="0" Width="20" Height="20" Cursor="Hand" ToolTip.Tip="Cancel">
+                                            <PathIcon Data="M18,18H6V6H18V18Z" Width="12" Height="12" Foreground="#999" />
+                                        </Button>
+                                        <Button Command="{Binding MinimizeDialogCommand}" Background="Transparent" Padding="0" Width="20" Height="20" Cursor="Hand" ToolTip.Tip="Minimize">
+                                            <PathIcon Data="M20,14H4V10H20" Width="12" Height="12" Foreground="#999" />
+                                        </Button>
+                                    </StackPanel>
+                                    
+                                    <ProgressBar Grid.Row="1" Grid.ColumnSpan="2" Height="8" Minimum="0" Maximum="100" Value="{Binding Progress}" Background="#E0E0E0" CornerRadius="4" Margin="0,0,0,8">
+                                        <ProgressBar.Foreground>
+                                            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                                                <GradientStop Offset="0" Color="#88bee5" />
+                                                <GradientStop Offset="1" Color="#95C174" />
+                                            </LinearGradientBrush>
+                                        </ProgressBar.Foreground>
+                                    </ProgressBar>
+                                    
+                                    <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="5">
+                                        <TextBlock Text="{Binding FormattedProgress}" FontSize="12" Foreground="#666" />
+                                        <TextBlock Text=" - " FontSize="12" Foreground="#666" />
+                                        <TextBlock Text="{Binding State}" FontSize="12" Foreground="#666" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- Minimized State (Chip) -->
+                            <Border BoxShadow="0 4 10 0 #40000000" CornerRadius="20" IsVisible="{Binding IsDialogMinimized}" HorizontalAlignment="Left">
+                                <Button Command="{Binding ExpandDialogCommand}"
+                                        Background="#333333"
+                                        BorderThickness="0"
+                                        CornerRadius="20"
+                                        Padding="12,8"
+                                        Cursor="Hand">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <PathIcon Data="M19,9H15V3H9V9H5L12,16L19,9M5,18V20H19V18H5Z" Width="14" Height="14" Foreground="White" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding FileName}" Foreground="White" FontSize="13" VerticalAlignment="Center" MaxWidth="150" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Progress, StringFormat='({0}%)'}" Foreground="White" FontSize="13" VerticalAlignment="Center" />
+                                        <Button Command="{Binding CloseDialogCommand}" Margin="4,0,0,0" Background="Transparent" Padding="0" Width="14" Height="14" Cursor="Hand" VerticalAlignment="Center">
+                                            <PathIcon Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" Width="10" Height="10" Foreground="White" />
+                                        </Button>
+                                    </StackPanel>
+                                </Button>
+                            </Border>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Popup>
+
+        <!-- Confirm Prompt Overlay (Using Popup to fix airspace over CEF) -->
+        <Popup PlacementTarget="{Binding #MainGrid}"
+               Placement="Center"
+               IsOpen="{Binding ConfirmPrompt.IsVisible}"
+               IsLightDismissEnabled="False"
+               Topmost="True">
+            <Border Background="#F3F3F3" BorderBrush="#D8D8D8" BorderThickness="1" CornerRadius="16" Padding="16"
+                    Width="360" BoxShadow="0 2 10 0 #18000000" Margin="30">
+                <Border.Styles>
+                    <Style Selector="Button.Negative">
+                        <Setter Property="Background" Value="#F3C7BC" />
+                        <Setter Property="Foreground" Value="#5A2E26" />
+                        <Setter Property="BorderThickness" Value="0" />
+                        <Setter Property="CornerRadius" Value="12" />
+                        <Setter Property="Padding" Value="16,10" />
+                        <Setter Property="FontSize" Value="14" />
+                        <Setter Property="HorizontalContentAlignment" Value="Center" />
+                    </Style>
+                    <Style Selector="Button.Negative:pointerover /template/ ContentPresenter">
+                        <Setter Property="Background" Value="#EBB3A6" />
+                    </Style>
+
+                    <Style Selector="Button.Neutral">
+                        <Setter Property="Background" Value="#BFE4F6" />
+                        <Setter Property="Foreground" Value="#1F3A4D" />
+                        <Setter Property="BorderThickness" Value="0" />
+                        <Setter Property="CornerRadius" Value="12" />
+                        <Setter Property="Padding" Value="16,10" />
+                        <Setter Property="FontSize" Value="14" />
+                        <Setter Property="HorizontalContentAlignment" Value="Center" />
+                    </Style>
+                    <Style Selector="Button.Neutral:pointerover /template/ ContentPresenter">
+                        <Setter Property="Background" Value="#A9D7EE" />
+                    </Style>
+
+                    <Style Selector="Button.Positive">
+                        <Setter Property="Background" Value="#C4F0D0" />
+                        <Setter Property="Foreground" Value="#1F4A2C" />
+                        <Setter Property="BorderThickness" Value="0" />
+                        <Setter Property="CornerRadius" Value="12" />
+                        <Setter Property="Padding" Value="16,10" />
+                        <Setter Property="FontSize" Value="14" />
+                        <Setter Property="HorizontalContentAlignment" Value="Center" />
+                    </Style>
+                    <Style Selector="Button.Positive:pointerover /template/ ContentPresenter">
+                        <Setter Property="Background" Value="#AFE6BE" />
+                    </Style>
+                </Border.Styles>
+
+                <StackPanel Orientation="Vertical">
+                    <TextBlock Text="{Binding ConfirmPrompt.Title}" FontWeight="Bold" FontSize="16" Foreground="#2A2A2A" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding ConfirmPrompt.Message}" FontSize="14" Foreground="#4A4A4A" Margin="0,10,0,0" TextWrapping="Wrap" />
+
+                    <Border Background="#FFFFFF" CornerRadius="14" BorderBrush="#E4E4E4" BorderThickness="1"
+                            Padding="10" Margin="0,12,0,0" HorizontalAlignment="Center"
+                            IsVisible="{Binding ConfirmPrompt.IsQrVisible}">
+                        <Image Source="{Binding ConfirmPrompt.QrImage}" Width="220" Height="220" />
+                    </Border>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0" Spacing="8">
+                        <Button Classes="Negative" Content="{Binding ConfirmPrompt.NegativeText}" Command="{Binding ConfirmPrompt.NegativeCommand}" IsVisible="{Binding ConfirmPrompt.IsNegativeVisible}" Cursor="Hand" />
+                        <Button Classes="Neutral" Content="{Binding ConfirmPrompt.NeutralText}" Command="{Binding ConfirmPrompt.NeutralCommand}" IsVisible="{Binding ConfirmPrompt.IsNeutralVisible}" Cursor="Hand" />
+                        <Button Classes="Positive" Content="{Binding ConfirmPrompt.PositiveText}" Command="{Binding ConfirmPrompt.PositiveCommand}" IsVisible="{Binding ConfirmPrompt.IsPositiveVisible}" Cursor="Hand" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Popup>
+
+        <!-- Extension Popup Overlay -->
+        <Popup Name="ExtensionPopup"
+               PlacementTarget="{Binding #MainGrid}"
+               Placement="TopEdgeAlignedRight"
+               IsOpen="False"
+               IsLightDismissEnabled="True"
+               Topmost="True"
+               Closed="ExtensionPopup_Closed">
+            <Border Background="#FFFFFF" BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="8"
+                    BoxShadow="0 4 15 0 #40000000" Margin="0,50,20,0" ClipToBounds="True">
+                <!-- We will inject the AvaloniaCefBrowser into this ContentControl programmatically -->
+                <ContentControl Name="ExtensionPopupContent" Width="400" Height="500" />
+            </Border>
+        </Popup>
+        <controls:PageViewBar Name="PageViewBar" ZIndex="30" IsVisible="False" />
+
+        <!-- Floating Failsafe Menu Button -->
+        <Button Name="FailsafeMenuButton"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Top"
+                Margin="10,10,0,0"
+                Background="#60000000"
+                CornerRadius="8"
+                Padding="8"
+                Cursor="Hand"
+                ToolTip.Tip="Open SuperMenu (Ctrl+M)"
+                Opacity="0.5">
+            <Button.Styles>
+                <Style Selector="Button:pointerover">
+                    <Setter Property="Opacity" Value="1.0"/>
+                    <Setter Property="Background" Value="#90000000"/>
+                </Style>
+            </Button.Styles>
+            <PathIcon Data="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z" Width="18" Height="18" Foreground="White"/>
+        </Button>
+    </Grid>
+</Window>

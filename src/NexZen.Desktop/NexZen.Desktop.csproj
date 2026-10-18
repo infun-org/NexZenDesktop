@@ -1,0 +1,73 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <CefGlueTargetPlatform>linux-x64</CefGlueTargetPlatform>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.3" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.3" />
+    <PackageReference Include="Avalonia.Wayland" Version="12.1.3" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.3" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.3" />
+    <PackageReference Include="Avalonia.Controls.ColorPicker" Version="12.1.3" />
+    <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3" />
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+    <ProjectReference Include="..\libs_cefglue\CefGlue.Avalonia\CefGlue.Avalonia.csproj" />
+    <ProjectReference Include="..\libs_cefglue\CefGlue\CefGlue.csproj" />
+    <ProjectReference Include="..\libs_cefglue\CefGlue.Common\CefGlue.Common.csproj" />
+    <ProjectReference Include="..\libs_cefglue\CefGlue.Common.Shared\CefGlue.Common.Shared.csproj" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+    <PackageReference Include="cef.redist.linux64" Version="120.1.8" />
+    <PackageReference Include="Net.Codecrete.QrCodeGenerator" Version="2.0.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NexZen.Core\NexZen.Core.csproj" />
+    <ProjectReference Include="..\NexZen.Application\NexZen.Application.csproj" />
+    <ProjectReference Include="..\NexZen.Infrastructure\NexZen.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**" Exclude="Assets\NewTab\**" />
+    <Content Include="Assets\NewTab\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>NewTab\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+  </ItemGroup>
+  
+  <Import Project="..\libs_cefglue\CefGlue.CopyLocal.props" />
+  <Import Project="..\libs_cefglue\CefGlue.Common\build\CefGlue.Common.targets" />
+
+  <!-- CEF 152 binary distribution (Linux), first match wins:
+       1. dotnet build -p:Cef152Root=/path/to/cef_binary_...
+       2. NEXZEN_CEF152_ROOT environment variable
+       3. <repo>/third_party/cef152 (extracted CEF build or a symlink to one)
+       4. ~/Downloads/cef-spike/<default build> (original dev machine layout) -->
+  <PropertyGroup>
+    <Cef152Root Condition="'$(Cef152Root)' == ''">$(NEXZEN_CEF152_ROOT)</Cef152Root>
+    <_Cef152RepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../../third_party/cef152'))</_Cef152RepoRoot>
+    <Cef152Root Condition="'$(Cef152Root)' == '' And Exists('$(_Cef152RepoRoot)')">$(_Cef152RepoRoot)</Cef152Root>
+    <Cef152Root Condition="'$(Cef152Root)' == '' And '$(HOME)' != ''">$(HOME)/Downloads/cef-spike/cef_binary_152.0.10+g82a832e+chromium-152.0.7977.140_linux64_minimal</Cef152Root>
+  </PropertyGroup>
+
+  <Target Name="UseCef152Linux" AfterTargets="Build" Condition="'$(CefGlueTargetPlatform)' == 'linux-x64'">
+    <Error Condition="!Exists('$(Cef152Root)/Release/libcef.so')"
+           Text="CEF 152 not found at '$(Cef152Root)'. Extract a CEF 152 linux64 build (https://cef-builds.spotifycdn.com/index.html) and pass -p:Cef152Root=..., set NEXZEN_CEF152_ROOT, or place it at third_party/cef152." />
+    <Exec Command="bash &quot;$(MSBuildProjectDirectory)/use-cef152.sh&quot; &quot;$(Cef152Root)&quot; &quot;$(OutputPath)CefGlueBrowserProcess&quot;" />
+    <!-- Copy the framework-dependent subprocess (not the self-contained RID publish,
+         whose runtimeconfig.json has includedFrameworks and fails without libhostpolicy.so). -->
+    <ItemGroup>
+      <_CefGlueBrowserProcessHost Include="$(MSBuildThisFileDirectory)../libs_cefglue/CefGlue.BrowserProcess/bin/$(Configuration)/net8.0/Xilium.CefGlue.BrowserProcess" />
+      <_CefGlueBrowserProcessHost Include="$(MSBuildThisFileDirectory)../libs_cefglue/CefGlue.BrowserProcess/bin/$(Configuration)/net8.0/Xilium.CefGlue.BrowserProcess.dll" />
+      <_CefGlueBrowserProcessHost Include="$(MSBuildThisFileDirectory)../libs_cefglue/CefGlue.BrowserProcess/bin/$(Configuration)/net8.0/Xilium.CefGlue.BrowserProcess.pdb" />
+      <_CefGlueBrowserProcessHost Include="$(MSBuildThisFileDirectory)../libs_cefglue/CefGlue.BrowserProcess/bin/$(Configuration)/net8.0/Xilium.CefGlue.BrowserProcess.deps.json" />
+      <_CefGlueBrowserProcessHost Include="$(MSBuildThisFileDirectory)../libs_cefglue/CefGlue.BrowserProcess/bin/$(Configuration)/net8.0/Xilium.CefGlue.BrowserProcess.runtimeconfig.json" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_CefGlueBrowserProcessHost)" DestinationFolder="$(OutputPath)CefGlueBrowserProcess" SkipUnchangedFiles="false" />
+  </Target>
+</Project>

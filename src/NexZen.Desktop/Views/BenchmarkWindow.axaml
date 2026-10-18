@@ -1,0 +1,82 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:cef="clr-namespace:Xilium.CefGlue.Avalonia;assembly=Xilium.CefGlue.Avalonia"
+        x:Class="NexZen.Desktop.Views.BenchmarkWindow"
+        Title="Benchmark — NexZen"
+        Width="1280" Height="800"
+        MinWidth="800" MinHeight="600"
+        WindowStartupLocation="CenterScreen"
+        Background="#0f1117">
+
+    <Grid RowDefinitions="Auto,*">
+
+        <!-- Top toolbar -->
+        <Border Grid.Row="0"
+                Background="#1a1d27"
+                BorderBrush="#2a2d3e"
+                BorderThickness="0,0,0,1"
+                Padding="8,6">
+            <DockPanel>
+                <!-- Left: URL bar + reload -->
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Button Name="ReloadButton"
+                            Content="⟳ Reload"
+                            Click="OnReloadClick"
+                            Padding="10,5"
+                            CornerRadius="6"
+                            Background="#2a2d3e"
+                            Foreground="#e0e0e0"
+                            BorderThickness="0"
+                            FontSize="13"
+                            Cursor="Hand"/>
+                    <Button Name="DevToolsButton"
+                            Content="🛠 DevTools"
+                            Click="OnDevToolsClick"
+                            Padding="10,5"
+                            CornerRadius="6"
+                            Background="#2a2d3e"
+                            Foreground="#e0e0e0"
+                            BorderThickness="0"
+                            FontSize="13"
+                            Cursor="Hand"/>
+                    <Button Name="GpuInfoButton"
+                            Content="⚙ GPU Info"
+                            Click="OnGpuInfoClick"
+                            Padding="10,5"
+                            CornerRadius="6"
+                            Background="#1e3a5f"
+                            Foreground="#7ec8e3"
+                            BorderThickness="0"
+                            FontSize="13"
+                            Cursor="Hand"/>
+                </StackPanel>
+
+                <!-- Center: URL label -->
+                <TextBlock DockPanel.Dock="Left"
+                           Name="UrlLabel"
+                           Text="https://browserbench.org/"
+                           Foreground="#6b7280"
+                           VerticalAlignment="Center"
+                           Margin="16,0,0,0"
+                           FontSize="13"
+                           FontFamily="Consolas,monospace"/>
+
+                <!-- Right: close -->
+                <Button DockPanel.Dock="Right"
+                        Content="✕"
+                        Click="OnCloseClick"
+                        Padding="8,5"
+                        CornerRadius="6"
+                        Background="Transparent"
+                        Foreground="#6b7280"
+                        BorderThickness="0"
+                        FontSize="15"
+                        Cursor="Hand"/>
+            </DockPanel>
+        </Border>
+
+        <!-- CEF Browser fills remaining space -->
+        <Decorator Name="BrowserHost" Grid.Row="1" />
+
+    </Grid>
+</Window>

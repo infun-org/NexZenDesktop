@@ -1,0 +1,333 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NexZen.Application.ViewModels"
+             xmlns:helpers="using:NexZen.Desktop.Helpers"
+             x:Class="NexZen.Desktop.Views.AiFunctionView"
+             x:DataType="vm:AiFunctionViewModel"
+             Name="RootControl">
+  <UserControl.Styles>
+    <Style Selector="Button.Pill">
+      <Setter Property="CornerRadius" Value="12"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/>
+      <Setter Property="Padding" Value="12,10"/>
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Button.BluePill">
+      <Setter Property="Background" Value="#BFE4F6"/>
+      <Setter Property="Foreground" Value="#1F3A4D"/>
+    </Style>
+    <Style Selector="Button.BluePill:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#A9D7EE"/>
+    </Style>
+    <Style Selector="Button.GreenPill">
+      <Setter Property="Background" Value="#C4F0D0"/>
+      <Setter Property="Foreground" Value="#1F4A2C"/>
+    </Style>
+    <Style Selector="Button.GreenPill:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#AFE6BE"/>
+    </Style>
+    <Style Selector="Button.SendPill">
+      <Setter Property="Background" Value="#F3C7BC"/>
+      <Setter Property="Foreground" Value="#5A2E26"/>
+      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="Padding" Value="18,8"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Button.SendPill:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#EBB3A6"/>
+    </Style>
+    <Style Selector="Button.SavePill">
+      <Setter Property="Background" Value="#F7F7F7"/>
+      <Setter Property="Foreground" Value="#333333"/>
+      <Setter Property="BorderBrush" Value="#D0D0D0"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="Padding" Value="16,8"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Button.ThinkingPill">
+      <Setter Property="Background" Value="#F7F7F7"/>
+      <Setter Property="Foreground" Value="#333333"/>
+      <Setter Property="BorderBrush" Value="#D0D0D0"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="Padding" Value="14,8"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Button.ThinkingPill:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#EEEEEE"/>
+    </Style>
+    <Style Selector="Button.ThinkingPill.On">
+      <Setter Property="Background" Value="#BFE4F6"/>
+      <Setter Property="Foreground" Value="#1F3A4D"/>
+      <Setter Property="BorderBrush" Value="#A9D7EE"/>
+    </Style>
+    <Style Selector="Button.ThinkingPill.On:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#A9D7EE"/>
+    </Style>
+    <Style Selector="TextBox.Soft">
+      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="Padding" Value="12,8"/>
+      <Setter Property="Background" Value="#FFFFFF"/>
+      <Setter Property="BorderBrush" Value="#D8D8D8"/>
+      <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+    <Style Selector="ComboBox.Soft">
+      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="Padding" Value="8,4"/>
+      <Setter Property="Background" Value="#FFFFFF"/>
+      <Setter Property="BorderBrush" Value="#D8D8D8"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="MinHeight" Value="38"/>
+    </Style>
+    <Style Selector="ListBoxItem">
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="Margin" Value="0"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+    </Style>
+    <Style Selector="ListBoxItem:pointerover">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="ListBoxItem:selected">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+  </UserControl.Styles>
+
+  <Grid>
+  <Border x:Name="ResearchHost" Opacity="0" IsHitTestVisible="False" IsVisible="False" ZIndex="0"/>
+  <Border CornerRadius="16" BorderBrush="#D8D8D8" BorderThickness="1" Margin="8" Background="#F3F3F3" ClipToBounds="True" ZIndex="1">
+    <Border.Effect>
+      <DropShadowDirectionEffect ShadowDepth="2" BlurRadius="10" Color="#18000000" />
+    </Border.Effect>
+
+    <Grid ColumnDefinitions="*,390" Margin="16">
+      <Grid Grid.Column="0" RowDefinitions="Auto,*,Auto" Margin="0,0,12,0">
+        <StackPanel Grid.Row="0" Margin="0,0,0,8">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Text="AI Function" FontSize="24" FontWeight="Bold" Foreground="#2A2A2A"
+                       VerticalAlignment="Center"/>
+            <TextBlock Text="{Binding HeaderMeta}" Foreground="#8A8A8A" FontSize="13"
+                       VerticalAlignment="Center" Margin="0,4,0,0"/>
+          </StackPanel>
+          <TextBlock Text="{Binding PageTitle}" Foreground="#4A4A4A" FontSize="13" Margin="0,4,0,8"
+                     TextTrimming="CharacterEllipsis"/>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="Action:" FontSize="13" Foreground="#2A2A2A" VerticalAlignment="Center"/>
+            <ComboBox Classes="Soft" MinWidth="168" VerticalAlignment="Center"
+                      ItemsSource="{Binding ActionChoices}" SelectedItem="{Binding SelectedAction}"
+                      ToolTip.Tip="Send runs this action"/>
+            <ComboBox Classes="Soft" Width="140" VerticalAlignment="Center"
+                      ItemsSource="{Binding LanguageChoices}" SelectedItem="{Binding OutputLanguage}"
+                      ToolTip.Tip="Reply language"/>
+            <ComboBox Classes="Soft" MinWidth="210" MaxWidth="280" VerticalAlignment="Center"
+                      ItemsSource="{Binding LocalModels}" SelectedItem="{Binding SelectedLocalModel}"
+                      IsVisible="{Binding ShowLocalModelPicker}"
+                      IsEnabled="{Binding CanPickLocalModel}"
+                      ToolTip.Tip="Fast is text-only. Medium and High can read images."/>
+            <Button Classes="SavePill" Padding="8,6" Width="38" Height="34" VerticalAlignment="Center"
+                    Command="{Binding SaveConversationCommand}"
+                    IsEnabled="{Binding CanSaveConversation}"
+                    ToolTip.Tip="Save conversation">
+              <PathIcon Data="M19,9H15V3H9V9H5L12,16L19,9M5,18V20H19V18H5Z"
+                        Width="16" Height="16" Foreground="#333333"/>
+            </Button>
+            <Button Classes="SavePill" Padding="8,6" Width="38" Height="34" VerticalAlignment="Center"
+                    Command="{Binding OpenSettingsCommand}"
+                    ToolTip.Tip="Settings">
+              <PathIcon Data="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"
+                        Width="16" Height="16" Foreground="#333333"/>
+            </Button>
+          </StackPanel>
+          <TextBlock Text="{Binding StatusText}" FontSize="12" Foreground="#6A6A6A" TextWrapping="Wrap" Margin="0,6,0,0"/>
+        </StackPanel>
+
+        <Border Grid.Row="1" Background="#FFFFFF" CornerRadius="14" BorderBrush="#E4E4E4" BorderThickness="1" Padding="8">
+          <Grid RowDefinitions="Auto,*">
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="4,0,4,6">
+              <TextBlock Text="A" FontSize="11" Foreground="#8A8A8A" VerticalAlignment="Center"/>
+              <Slider Grid.Column="1" Minimum="11" Maximum="22" TickFrequency="1" IsSnapToTickEnabled="True"
+                      Value="{Binding ChatFontSize}" VerticalAlignment="Center" Margin="8,0" Height="20"
+                      ToolTip.Tip="Chat text size"/>
+              <TextBlock Grid.Column="2" Text="A" FontSize="16" FontWeight="SemiBold" Foreground="#4A4A4A"
+                         VerticalAlignment="Center"/>
+            </Grid>
+            <Grid Grid.Row="1">
+              <ListBox x:Name="ChatList" ItemsSource="{Binding Messages}" Background="Transparent" BorderThickness="0"
+                       Padding="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                       FontSize="{Binding ChatFontSize}">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:AiChatBubble">
+                    <StackPanel>
+                      <Border CornerRadius="12" Padding="12,8" Background="{Binding BubbleColor}" Margin="0,4"
+                              HorizontalAlignment="{Binding Alignment}"
+                              MaxWidth="{Binding Bounds.Width, RelativeSource={RelativeSource AncestorType=ListBox}, FallbackValue=580}">
+                        <StackPanel>
+                          <SelectableTextBlock helpers:ChatMarkdownText.Source="{Binding Text}" TextWrapping="Wrap" Foreground="{Binding TextColor}"
+                                               IsVisible="{Binding HasText}"/>
+                          <ItemsControl ItemsSource="{Binding ImagePaths}" IsVisible="{Binding HasImage}">
+                            <ItemsControl.ItemsPanel>
+                              <ItemsPanelTemplate>
+                                <WrapPanel />
+                              </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate>
+                                <Image Source="{Binding Converter={StaticResource PathToBitmapConverter}}"
+                                       MaxWidth="280" MaxHeight="280" Stretch="Uniform"
+                                       HorizontalAlignment="Left" Margin="0,8,8,0"/>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </StackPanel>
+                      </Border>
+                    </StackPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              <TextBlock Text="Save an API key in Settings, pick an action, then Send. Each page send asks before the text leaves this computer."
+                         TextWrapping="Wrap" Foreground="#8A8A8A" Margin="12"
+                         FontSize="{Binding ChatFontSize}"
+                         IsVisible="{Binding ShowEmptyHint}"
+                         HorizontalAlignment="Left" VerticalAlignment="Top"/>
+            </Grid>
+          </Grid>
+        </Border>
+
+        <StackPanel Grid.Row="2" Margin="0,10,0,0" Spacing="8"
+                    DragDrop.AllowDrop="True" DragDrop.DragOver="Composer_DragOver" DragDrop.Drop="Composer_Drop">
+          <ItemsControl ItemsSource="{Binding PendingImagePaths}" IsVisible="{Binding HasPendingImages}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Grid Width="64" Height="64" Margin="0,0,8,4">
+                  <Border CornerRadius="8" ClipToBounds="True" Background="#F3F3F3">
+                    <Image Source="{Binding Converter={StaticResource PathToBitmapConverter}}" Stretch="UniformToFill"/>
+                  </Border>
+                  <Button Classes="SavePill" Content="×" Padding="5,0" FontSize="13"
+                          HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-4,-4,0"
+                          Command="{Binding DataContext.RemovePendingImageCommand, ElementName=RootControl}"
+                          CommandParameter="{Binding}"
+                          ToolTip.Tip="Remove image"/>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto">
+            <TextBox x:Name="MessageInputBox" Grid.Column="0" Classes="Soft"
+                     Text="{Binding MessageInput, UpdateSourceTrigger=PropertyChanged}"
+                     PlaceholderText="Type a message or paste an image..." KeyDown="MessageInput_KeyDown"
+                     PastingFromClipboard="MessageInput_PastingFromClipboard"
+                     AcceptsReturn="False"
+                     DragDrop.AllowDrop="True" DragDrop.DragOver="Composer_DragOver" DragDrop.Drop="Composer_Drop"/>
+            <Button Grid.Column="1" Classes="SavePill" Padding="8,6" Width="38" Height="34" Margin="8,0,0,0"
+                    Command="{Binding AttachImagesCommand}" ToolTip.Tip="Attach an image from this computer">
+              <PathIcon Data="M16.5,6V17.5A4,4 0 0,1 12.5,21.5A4,4 0 0,1 8.5,17.5V5A2.5,2.5 0 0,1 11,2.5A2.5,2.5 0 0,1 13.5,5V15.5A1,1 0 0,1 12.5,16.5A1,1 0 0,1 11.5,15.5V6H10V15.5A2.5,2.5 0 0,0 12.5,18A2.5,2.5 0 0,0 15,15.5V5A4,4 0 0,0 11,1A4,4 0 0,0 7,5V17.5A5.5,5.5 0 0,0 12.5,23A5.5,5.5 0 0,0 18,17.5V6H16.5Z"
+                        Width="16" Height="16" Foreground="#333333"/>
+            </Button>
+            <Button Grid.Column="2" Classes="ThinkingPill" Classes.On="{Binding IsThinking}" Content="Thinking"
+                    Margin="8,0,0,0" Command="{Binding ToggleThinkingCommand}" IsEnabled="{Binding !IsBusy}"
+                    ToolTip.Tip="When on, every Chat send looks up the public web first, then the model answers from those results."/>
+            <Button Grid.Column="3" Classes="SendPill" Content="Stop" Margin="8,0,0,0"
+                    Command="{Binding StopCommand}" IsVisible="{Binding IsBusy}"/>
+            <Button Grid.Column="4" Classes="SendPill" Content="Send" Margin="8,0,0,0"
+                    Command="{Binding SendMessageCommand}" IsEnabled="{Binding CanSend}"
+                    IsVisible="{Binding !IsBusy}"/>
+          </Grid>
+        </StackPanel>
+
+        <Border Grid.Row="0" Grid.RowSpan="3" IsVisible="{Binding IsConfirmOpen}"
+                Background="#CCF3F3F3" CornerRadius="14" ZIndex="21" Padding="4">
+          <Border Background="#FFFFFF" CornerRadius="14" BorderBrush="#E4E4E4" BorderThickness="1" Padding="16"
+                  VerticalAlignment="Center" MaxWidth="420">
+            <StackPanel Spacing="10">
+              <TextBlock Text="{Binding ConfirmTitle}" FontSize="18" FontWeight="SemiBold" Foreground="#2A2A2A" TextWrapping="Wrap"/>
+              <TextBlock Text="{Binding ConfirmMessage}" FontSize="13" Foreground="#4A4A4A" TextWrapping="Wrap"/>
+              <CheckBox IsChecked="{Binding ConfirmDontAskAgain}" Content="Don't ask again for this tab"
+                        Foreground="#2A2A2A" FontSize="13"/>
+              <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                <Button Classes="Pill SendPill" Content="Cancel" Padding="16,8" HorizontalAlignment="Left"
+                        Command="{Binding ConfirmCancelCommand}"/>
+                <Button Classes="Pill GreenPill" Content="{Binding ConfirmAcceptLabel}" Padding="16,8" HorizontalAlignment="Left"
+                        Command="{Binding ConfirmSendCommand}"/>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+        </Border>
+
+        <Border Grid.Row="0" Grid.RowSpan="3" IsVisible="{Binding IsSettingsOpen}"
+                Background="#CCF3F3F3" CornerRadius="14" ZIndex="20" Padding="4">
+          <Border Background="#FFFFFF" CornerRadius="14" BorderBrush="#E4E4E4" BorderThickness="1" Padding="16"
+                  VerticalAlignment="Top">
+            <ScrollViewer MaxHeight="720" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Spacing="10">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="Provider settings" FontSize="18" FontWeight="SemiBold" Foreground="#2A2A2A"
+                           VerticalAlignment="Center"/>
+                <Button Grid.Column="1" Classes="SavePill" Content="Close" Padding="12,6"
+                        Command="{Binding CloseSettingsCommand}"/>
+              </Grid>
+              <TextBlock Text="Provider" FontSize="13" Foreground="#4A4A4A"/>
+              <ComboBox Classes="Soft" ItemsSource="{Binding ProviderChoices}"
+                        SelectedItem="{Binding SelectedProvider}"
+                        ToolTip.Tip="Switch saved providers, or choose New custom"/>
+              <TextBlock Text="Name" FontSize="13" Foreground="#4A4A4A" IsVisible="{Binding IsCustomProvider}"/>
+              <TextBox Classes="Soft" Text="{Binding CustomName, UpdateSourceTrigger=PropertyChanged}"
+                       IsVisible="{Binding IsCustomProvider}"
+                       PlaceholderText="DeepSeek"/>
+              <TextBlock Text="API base URL" FontSize="13" Foreground="#4A4A4A"/>
+              <TextBox Classes="Soft" Text="{Binding BaseUrl}" IsReadOnly="{Binding !IsCustomProvider}"
+                       PlaceholderText="https://api.deepseek.com/v1"/>
+              <TextBlock Text="Model" FontSize="13" Foreground="#4A4A4A"
+                         IsVisible="{Binding !ShowLocalModelPicker}"/>
+              <TextBox Classes="Soft" Text="{Binding Model}" PlaceholderText="grok-4.3"
+                       IsVisible="{Binding !ShowLocalModelPicker}"/>
+              <TextBlock Text="Local model" FontSize="13" Foreground="#4A4A4A"
+                         IsVisible="{Binding ShowLocalModelPicker}"/>
+              <ComboBox Classes="Soft" ItemsSource="{Binding LocalModels}"
+                        SelectedItem="{Binding SelectedLocalModel}"
+                        IsVisible="{Binding ShowLocalModelPicker}"
+                        IsEnabled="{Binding CanPickLocalModel}"
+                        ToolTip.Tip="Fast is text-only. Medium and High can read images."/>
+              <TextBlock Text="Fast is text-only. Medium and High can read images. Changing this restarts the local model; missing files download automatically."
+                         TextWrapping="Wrap" Foreground="#8A8A8A" FontSize="12"
+                         IsVisible="{Binding ShowLocalModelPicker}"/>
+              <TextBlock Text="API key" FontSize="13" Foreground="#4A4A4A"/>
+              <TextBox Name="ApiKeyBox" Classes="Soft" Text="{Binding ApiKeyInput, UpdateSourceTrigger=PropertyChanged}"
+                       PlaceholderText="{Binding ApiKeyPlaceholder}" PasswordChar="•"/>
+              <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" Foreground="#4A4A4A" FontSize="13"/>
+              <WrapPanel Orientation="Horizontal">
+                <Button Classes="Pill GreenPill" Content="Test connection" Padding="16,8" Margin="0,0,8,8" HorizontalAlignment="Left"
+                        Command="{Binding TestConnectionCommand}" IsEnabled="{Binding !IsBusy}"/>
+                <Button Classes="Pill BluePill" Content="Save" Padding="16,8" Margin="0,0,8,8" HorizontalAlignment="Left"
+                        Command="{Binding SaveSettingsCommand}"/>
+                <Button Classes="Pill SendPill" Content="Delete key" Padding="16,8" Margin="0,0,8,8" HorizontalAlignment="Left"
+                        Command="{Binding DeleteKeyCommand}" IsEnabled="{Binding HasSavedKey}"/>
+                <Button Classes="Pill SendPill" Content="Delete provider" Padding="16,8" Margin="0,0,8,8" HorizontalAlignment="Left"
+                        Command="{Binding DeleteProviderCommand}" IsVisible="{Binding CanDeleteProvider}"/>
+              </WrapPanel>
+              <TextBlock Text="Save a custom provider to keep its URL, model, and key. Switch from the Provider list without deleting the previous one. Keys stay in the NexZen PIN vault."
+                         TextWrapping="Wrap" Foreground="#8A8A8A" FontSize="12"/>
+            </StackPanel>
+            </ScrollViewer>
+          </Border>
+        </Border>
+      </Grid>
+
+      <Border x:Name="CompanionHost" Grid.Column="1"
+              Background="Transparent" ClipToBounds="True" Margin="4,0,0,0"/>
+    </Grid>
+  </Border>
+  </Grid>
+</UserControl>

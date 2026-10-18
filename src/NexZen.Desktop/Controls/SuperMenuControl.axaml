@@ -1,0 +1,916 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="300" d:DesignHeight="500"
+             x:Class="NexZen.Desktop.Controls.SuperMenuControl"
+             xmlns:vm="using:NexZen.Application.ViewModels"
+             xmlns:models="using:NexZen.Core.Entities"
+             xmlns:sys="using:System"
+             x:DataType="vm:MainViewModel"
+             Focusable="True">
+    <UserControl.Styles>
+        <!-- Style for the top row icon buttons -->
+        <Style Selector="Button.IconBtn">
+            <Setter Property="Width" Value="36" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Background" Value="#F5F5F5" />
+            <Setter Property="BorderBrush" Value="#D0D0D0" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Margin" Value="2" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="16" />
+        </Style>
+        <Style Selector="Button.IconBtn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#C0DBF3" />
+        </Style>
+
+        <Style Selector="Border.ListItem">
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Background" Value="#FFFFFF" />
+            <Setter Property="BorderBrush" Value="#D0D0D0" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="12,0" />
+        </Style>
+
+        <!-- Style for the list buttons -->
+        <Style Selector="Button.ListItem">
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="#00D0D0D0" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Margin" Value="0,4,0,0" />
+            <Setter Property="Padding" Value="5,0" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="Medium" />
+        </Style>
+        <Style Selector="Button.ListItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#C0DBF3" />
+        </Style>
+        <Style Selector="Button.ListItem.suggestion-selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="#C0DBF3" />
+        </Style>
+        <Style Selector="Button.ListItem:disabled">
+            <Setter Property="Opacity" Value="0.4" />
+        </Style>
+        <Style Selector="Button.ListItem:disabled:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+
+        <!-- Style for the highlighted list button -->
+        <Style Selector="Border.HighlightItem">
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="Height" Value="42" />
+            <Setter Property="Background" Value="#E8F5E9" />
+            <Setter Property="BorderBrush" Value="#81C784" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Margin" Value="0,8,0,0" />
+            <Setter Property="Padding" Value="12,0" />
+        </Style>
+
+        <!-- Style for the Star Button in Address bar -->
+        <Style Selector="Button.StarBtn > PathIcon">
+            <Setter Property="Foreground" Value="#666666" />
+            <Setter Property="Data" Value="M22,9.24L14.81,8.62L12,2L9.19,8.63L2,9.24L7.46,13.97L5.82,21L12,17.27L18.18,21L16.54,13.97L22,9.24M12,15.4L8.24,17.67L9.24,13.39L5.92,10.51L10.3,10.13L12,6.1L13.71,10.14L18.09,10.52L14.77,13.4L15.77,17.68L12,15.4Z" />
+        </Style>
+        <Style Selector="Button.StarBtn.IsBookmarked > PathIcon">
+            <Setter Property="Foreground" Value="#FFC107" />
+            <Setter Property="Data" Value="M12,17.27L18.18,21L16.54,13.97L22,9.24L14.81,8.62L12,2L9.19,8.63L2,9.24L7.46,13.97L5.82,21L12,17.27Z" />
+        </Style>
+    </UserControl.Styles>
+
+    <StackPanel Spacing="5">
+        <!-- Address Bar -->
+        <Border Name="AddressBarBorder" Padding="10,6"
+                Background="#FFFFFF"
+                BorderBrush="#CCCCCC" BorderThickness="1"
+                CornerRadius="8"
+                BoxShadow="0 2 5 0 #60000000">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto">
+                <!-- Back -->
+                <Button Name="BackButton" Grid.Column="0" Click="BackButton_Click" ContextRequested="BackButton_ContextRequested" Background="Transparent" Margin="0,0,5,0" Width="30" Height="30" CornerRadius="15">
+                    <PathIcon Data="M15.41,16.58L10.83,12L15.41,7.41L14,6L8,12L14,18L15.41,16.58Z" Width="14" Height="14" Foreground="#333" />
+                </Button>
+                <!-- Forward -->
+                <Button Grid.Column="1" Click="ForwardButton_Click" Background="Transparent" Margin="0,0,10,0" Width="30" Height="30" CornerRadius="15">
+                    <PathIcon Data="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z" Width="14" Height="14" Foreground="#333" />
+                </Button>
+                
+                <!-- Lock this domain -->
+                <Button x:Name="LockDomainButton" Grid.Column="2" Click="LockDomain_Click"
+                        Background="Transparent" Padding="0" Margin="0,0,6,0" Width="24" Height="28"
+                        ToolTip.Tip="Lock this domain with your NexZen PIN">
+                    <PathIcon Data="M18,8H17V6C17,3.24 14.76,1 12,1C9.24,1 7,3.24 7,6V8H6C4.9,8 4,8.9 4,10V20C4,21.1 4.9,22 6,22H18C19.1,22 20,21.1 20,20V10C20,8.9 19.1,8 18,8M9,6C9,4.34 10.34,3 12,3C13.66,3 15,4.34 15,6V8H9V6M18,20H6V10H18V20M12,17C13.1,17 14,16.1 14,15C14,13.9 13.1,13 12,13C10.9,13 10,13.9 10,15C10,16.1 10.9,17 12,17Z"
+                              Foreground="#4CAF50" Width="16" Height="16" />
+                </Button>
+                
+                <!-- URL Box -->
+                <TextBox x:Name="UrlTextBox" SelectionBrush="#900000" SelectionForegroundBrush="#FFFFFF" Grid.Column="3" KeyDown="AddressBar_KeyDown" KeyUp="AddressBar_KeyUp" Text="{Binding CurrentUrl}" Background="Transparent" BorderThickness="0" VerticalAlignment="Center" FontSize="16" Foreground="#333" Width="250" />
+                
+                <!-- Star Icon -->
+                <Button Grid.Column="4" Classes="StarBtn" Classes.IsBookmarked="{Binding IsCurrentUrlBookmarked}" Command="{Binding ToggleBookmarkCommand}" Background="Transparent" Margin="10,0,0,0" Width="30" Height="30" CornerRadius="15">
+                    <PathIcon Width="18" Height="18" />
+                </Button>
+                
+                <!-- Search Engine Selector -->
+                <Button Grid.Column="5" Background="Transparent" Margin="5,0,0,0" Padding="5,0" Height="30" CornerRadius="15" ToolTip.Tip="Choose search engine">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="{Binding SearchEngineLabel}" VerticalAlignment="Center" FontSize="14" Foreground="#666" />
+                        <PathIcon Data="M7,10L12,15L17,10H7Z" Width="10" Height="10" Foreground="#666" />
+                    </StackPanel>
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedRight">
+                            <MenuItem Header="Google" Command="{Binding SetSearchEngineCommand}" CommandParameter="Google">
+                                <MenuItem.Icon>
+                                    <PathIcon Data="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.9 8.2,4.73 12.2,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.1,2C6.42,2 2.03,6.8 2.03,12C2.03,17.05 6.16,22 12.25,22C17.6,22 21.5,18.33 21.5,12.91C21.5,11.76 21.35,11.1 21.35,11.1Z" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Bing" Command="{Binding SetSearchEngineCommand}" CommandParameter="Bing">
+                                <MenuItem.Icon>
+                                    <PathIcon Data="M5,3V19L8.72,21L18,15.82V11.73H10.83V8.32L14.28,6.89V11.26H17.47L17.5,6.08L5,3Z" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="DuckDuckGo" Command="{Binding SetSearchEngineCommand}" CommandParameter="DuckDuckGo">
+                                <MenuItem.Icon>
+                                    <PathIcon Data="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12.61,16.5C11.66,16.5 10.95,15.7 10.95,14.73C10.95,14 11.39,13.25 12,13C12,13.6 12.64,13.92 13.16,13.71C13.59,13.54 13.95,13.04 13.95,12.55C13.95,11.72 13.18,11.14 12.44,11.14C11.75,11.14 11,11.71 11,12.43C11,13 11.23,13.27 11.5,13.5C11.53,13.53 11.56,13.55 11.56,13.58C11.56,13.63 11.5,13.68 11.45,13.68C11,13.68 9.9,13 9.9,11.5C9.9,9.45 11.65,8 13.81,8C15.85,8 17.5,9.43 17.5,11.5C17.5,13 16.4,13.68 15.93,13.68C15.88,13.68 15.84,13.63 15.84,13.58C15.84,13.55 15.87,13.53 15.9,13.5C16.16,13.27 16.4,13 16.4,12.43C16.4,11.71 15.65,11.14 14.95,11.14C14.21,11.14 13.44,11.72 13.44,12.55C13.44,13.04 13.8,13.54 14.23,13.71C14.75,13.92 15.39,13.6 15.39,13C16,13.25 16.44,14 16.44,14.73C16.44,15.7 15.73,16.5 14.78,16.5H12.61Z" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Cốc Cốc" Command="{Binding SetSearchEngineCommand}" CommandParameter="CocCoc">
+                                <MenuItem.Icon>
+                                    <PathIcon Data="M12,2C6.48,2 2,6.48 2,12C2,17.52 6.48,22 12,22C17.52,22 22,17.52 22,12C22,6.48 17.52,2 12,2M12.92,16.5L8.71,11.96L8.68,16.5H7.2V7.5H8.71L12.92,12.04L12.96,7.5H14.44V16.5H12.92Z" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+
+                
+            </Grid>
+        </Border>
+
+        <!-- Context Menu Items -->
+        <Border Background="#fafafa"
+                BorderBrush="#CCCCCC"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="8"
+                HorizontalAlignment="Left"
+                BoxShadow="5 5 20 0 #4d000000"
+                Margin="0,4,30,30">
+            <Grid>
+                <StackPanel Name="MainMenuList">
+                    <Border Classes="ListItem" Margin="0,0,0,4">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <Image Grid.Column="0"
+                                   Source="{Binding ActiveTab.FaviconSource}"
+                                   Width="18"
+                                   Height="18"
+                                   Margin="2,0,8,0"
+                                   VerticalAlignment="Center"
+                                   Stretch="Uniform"
+                                   IsVisible="{Binding ActiveTab.FaviconSource, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding ActiveTab.Title}"
+                                       FontWeight="Bold"
+                                       FontSize="15"
+                                       Foreground="#333333"
+                                       VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"
+                                       MaxWidth="240"
+                                       ToolTip.Tip="{Binding ActiveTab.Title}" />
+                            <Button Grid.Column="2"
+                                    Width="24"
+                                    Height="24"
+                                    Padding="0"
+                                    Margin="8,0,0,0"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Click="CloseActiveTab_Click"
+                                    ToolTip.Tip="Close tab"
+                                    Cursor="Hand">
+                                <PathIcon Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"
+                                          Width="14" Height="14" Foreground="#E53935" />
+                            </Button>
+                        </Grid>
+                    </Border>
+                    <!-- Top Icons Row -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,4">
+                        <Button Classes="IconBtn" Click="TabManagerButton_Click" ToolTip.Tip="Tab Manager" FontWeight="Bold" Background="#FFCBCB" BorderBrush="#FFF8AFAF">
+                            <TextBlock Name="TabCountLabel" Text="1" />
+                        </Button>
+                        <Button Classes="IconBtn" Click="NewTabButton_Click" ToolTip.Tip="New Tab">
+                            <PathIcon Data="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z" Width="16" Height="16" Foreground="#333" />
+                        </Button>
+                        <Button Classes="IconBtn" Click="RefreshButton_Click" ToolTip.Tip="Refresh">
+                            <PathIcon Data="M17.65,6.35C16.2,4.9 14.21,4 12,4C7.58,4 4.01,7.58 4.01,12C4.01,16.42 7.58,20 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18C8.69,18 6,15.31 6,12C6,8.69 8.69,6 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z" Width="14" Height="14" Foreground="#333" />
+                        </Button>
+                        <Button Classes="IconBtn" Click="ShowBookmarkList_Click" ToolTip.Tip="Bookmarks">
+                            <PathIcon Data="M17,3H7C5.9,3 5.01,3.9 5.01,5L5,21L12,18L19,21V5C19,3.9 18.1,3 17,3Z" Width="14" Height="14" Foreground="#333" />
+                        </Button>
+                        <Button Classes="IconBtn" Click="ShowVisitHistory_Click" ToolTip.Tip="History">
+                            <PathIcon Data="M11.99,2C6.47,2 2,6.48 2,12C2,17.52 6.47,22 11.99,22C17.52,22 22,17.52 22,12C22,6.48 17.52,2 11.99,2M12,20C7.58,20 4,16.42 4,12C4,7.58 7.58,4 12,4C16.42,4 20,7.58 20,12C20,16.42 16.42,20 12,20M12.5,7H11V13L16.25,16.15L17,14.92L12.5,12.25V7Z" Width="14" Height="14" Foreground="#333" />
+                        </Button>
+                        <Button Classes="IconBtn" Click="ShowDownloadList_Click" ToolTip.Tip="Downloads">
+                            <PathIcon Data="M19,9H15V3H9V9H5L12,16L19,9M5,18V20H19V18H5Z" Width="14" Height="14" Foreground="#333" />
+                        </Button>
+                        <Button Classes="IconBtn" Click="ShowSavedPasswords_Click" ToolTip.Tip="Saved passwords">
+                            <PathIcon Data="M12,1A5,5 0 0,0 7,6C7,7.85 8,9.46 9.5,10.32V13H7V16H4V19H7V22H13V16.5L14.5,15C17.5,13.94 19,10.85 19,8A7,7 0 0,0 12,1M12,4A2,2 0 1,1 12,8A2,2 0 0,1 12,4Z" Width="15" Height="15" Foreground="#333" />
+                        </Button>
+                        <Button Classes="IconBtn" Click="ShowExtensionList_Click" ToolTip.Tip="Extensions">
+                            <PathIcon Data="M18,6H16C16,3.79 14.21,2 12,2C9.79,2 8,3.79 8,6H6C4.9,6 4,6.9 4,8V20C4,21.1 4.9,22 6,22H18C19.1,22 20,21.1 20,20V8C20,6.9 19.1,6 18,6M12,4C13.1,4 14,4.9 14,6H10C10,4.9 10.9,4 12,4M18,20H6V8H8V10C8,10.55 8.45,11 9,11C9.55,11 10,10.55 10,10V8H14V10C14,10.55 14.45,11 15,11C15.55,11 16,10.55 16,10V8H18V20Z" Width="14" Height="14" Foreground="#333" />
+                        </Button>
+                        <Button Classes="IconBtn" Click="GpuInfoButton_Click" ToolTip.Tip="GPU Info (chrome://gpu)">
+                            <PathIcon Data="M17,17H7V7H17M21,11V9H19V7C19,5.89 18.1,5 17,5H15V3H13V5H11V3H9V5H7C5.89,5 5,5.89 5,7V9H3V11H5V13H3V15H5V17A2,2 0 0,0 7,19H9V21H11V19H13V21H15V19H17A2,2 0 0,0 19,17V15H21V13H19V11M13,13H11V11H13V13Z" Width="14" Height="14" Foreground="#1565C0" />
+                        </Button>
+                    </StackPanel>
+                    
+
+                <!-- Extensions Toolbar -->
+                <ItemsControl Grid.Column="6" ItemsSource="{Binding Extensions}" Margin="8,0,0,0" VerticalAlignment="Center">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="4" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ExtensionItemViewModel">
+                            <Button Click="ExtensionToolbarButton_Click" Tag="{Binding Id}" Background="Transparent" Width="28" Height="28" CornerRadius="14" Padding="4" Cursor="Hand" ToolTip.Tip="{Binding Name}">
+                                <!-- Icon logic for Extension Toolbar -->
+                                <Grid>
+                                    <Image Source="{Binding Icon}" Width="20" Height="20" VerticalAlignment="Center">
+                                        <Image.IsVisible>
+                                            <Binding Path="Icon" Converter="{x:Static ObjectConverters.IsNotNull}" />
+                                        </Image.IsVisible>
+                                    </Image>
+                                    <PathIcon Data="M18,6H16C16,3.79 14.21,2 12,2C9.79,2 8,3.79 8,6H6C4.9,6 4,6.9 4,8V20C4,21.1 4.9,22 6,22H18C19.1,22 20,21.1 20,20V8C20,6.9 19.1,6 18,6M12,4C13.1,4 14,4.9 14,6H10C10,4.9 10.9,4 12,4M18,20H6V8H8V10C8,10.55 8.45,11 9,11C9.55,11 10,10.55 10,10V8H14V10C14,10.55 14.45,11 15,11C15.55,11 16,10.55 16,10V8H18V20Z" Width="16" Height="16" Foreground="#555">
+                                        <PathIcon.IsVisible>
+                                            <Binding Path="Icon" Converter="{x:Static ObjectConverters.IsNull}" />
+                                        </PathIcon.IsVisible>
+                                    </PathIcon>
+                                </Grid>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+
+                    <!-- List Items -->
+
+                    <Border Height="1" Margin="4,10,4,6" Background="#00D0D0D0" IsHitTestVisible="False" />
+
+                    <Button Classes="ListItem" Click="ReopenClosedTab_Click"
+                            IsVisible="{Binding CanReopenClosedTab}"
+                            ToolTip.Tip="{Binding ReopenClosedTabTip}">
+                        <Grid ColumnDefinitions="32,*,Auto">
+                            <PathIcon Data="M13,3A9,9 0 0,0 4,12H1L5,16L9,12H6A7,7 0 1,1 8.05,16.95L6.63,18.37A9,9 0 1,0 13,3M12,8V12.4L15,14.2L16,12.6L14,11.4V8H12Z" Width="16" Height="16" Foreground="#666" />
+                            <TextBlock Grid.Column="1" Text="Re-open closed tab" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="2" Text="Ctrl+Shift+T" VerticalAlignment="Center" Margin="28,0,0,0" Foreground="#888888" FontSize="12" />
+                        </Grid>
+                    </Button>
+
+                    <Border Height="1" Margin="4,10,4,6" Background="#00D0D0D0" IsHitTestVisible="False" IsVisible="{Binding CanReopenClosedTab}" />
+
+                    <Button Classes="ListItem" Click="OpenLinkInNewTab_Click">
+                        <Grid ColumnDefinitions="32,*"><PathIcon Data="M19,19H5V5H12V3H5C3.9,3 3,3.9 3,5V19C3,20.1 3.9,21 5,21H19C20.1,21 21,20.1 21,19V12H19V19M14,3V5H17.59L8.46,14.13L9.87,15.54L19,6.41V10H21V3H14Z" Width="16" Height="16" Foreground="#666"/><TextBlock Grid.Column="1" Text="Open in New tab" VerticalAlignment="Center"/></Grid>
+                    </Button>
+                    <Button Name="OpenInNewWindowButton" Classes="ListItem" Click="OpenInNewWindow_Click" IsVisible="False">
+                        <Grid ColumnDefinitions="32,*"><PathIcon Data="M19,19H5V5H12V3H5C3.9,3 3,3.9 3,5V19C3,20.1 3.9,21 5,21H19C20.1,21 21,20.1 21,19V12H19V19M14,3V5H17.59L8.46,14.13L9.87,15.54L19,6.41V10H21V3H14Z" Width="16" Height="16" Foreground="#666"/><TextBlock Grid.Column="1" Text="Open in New window" VerticalAlignment="Center"/></Grid>
+                    </Button>
+                    <Button Classes="ListItem" Click="ShowDeviceList_Click">
+                        <Grid ColumnDefinitions="32,*"><PathIcon Data="M4,6H20V16H4V6M20,4H4C2.9,4 2,4.9 2,6V16C2,17.1 2.9,18 4,18H10V20H8V22H16V20H14V18H20C21.1,18 22,17.1 22,16V6C22,4.9 21.1,4 20,4Z" Width="16" Height="16" Foreground="#666"/><TextBlock Grid.Column="1" Text="Open in Another device" VerticalAlignment="Center"/></Grid>
+                    </Button>
+                    <Button Name="OpenOnPinnedWindowButton" Classes="ListItem" Click="OpenOnPinnedWindow_Click" IsVisible="False">
+                        <Grid ColumnDefinitions="32,*"><PathIcon Data="M16,12V4H17V2H7V4H8V12L6,14V16H11V22H13V16H18V14L16,12Z" Width="16" Height="16" Foreground="#666"/><TextBlock Grid.Column="1" Text="Open in Pinned window" VerticalAlignment="Center"/></Grid>
+                    </Button>
+
+                    <Border Height="1" Margin="4,10,4,6" Background="#00D0D0D0" IsHitTestVisible="False" />
+
+                    <Button Classes="ListItem" Click="NewIncognitoWindow_Click">
+                        <Grid ColumnDefinitions="32,*,Auto">
+                            <PathIcon Data="M12,2A10,10 0 1,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 1,1 4,12A8,8 0 0,1 12,4M7,10.5A2.5,2.5 0 0,0 12,11.5A2.5,2.5 0 0,0 17,10.5H15A1,1 0 0,1 13,10.5H11A1,1 0 0,1 9,10.5Z" Width="16" Height="16" Foreground="#666" />
+                            <TextBlock Grid.Column="1" Text="New Incognito window" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="2" Text="Ctrl+Shift+N" VerticalAlignment="Center" Margin="28,0,0,0" Foreground="#888888" FontSize="12" />
+                        </Grid>
+                    </Button>
+
+                    <Button Name="MuteTabButton" Classes="ListItem" Click="MuteTab_Click">
+                        <Grid ColumnDefinitions="32,*"><PathIcon Data="M3,9V15H7L12,20V4L7,9H3M16.5,12C16.5,10.23 15.48,8.71 14,7.97V16.02C15.48,15.29 16.5,13.77 16.5,12M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.85 14,18.71V20.77C18.01,19.86 21,16.28 21,12C21,7.72 18.01,4.14 14,3.23Z" Width="16" Height="16" Foreground="#666"/><TextBlock Name="MuteTabLabel" Grid.Column="1" Text="Mute this tab" VerticalAlignment="Center"/></Grid>
+                    </Button>
+
+                    <Border Height="1" Margin="4,10,4,6" Background="#00D0D0D0" IsHitTestVisible="False"/>
+
+                    <Button Classes="ListItem" Click="CopyButton_Click">
+                        <Grid ColumnDefinitions="32,*,Auto">
+                            <PathIcon Data="M16,1H4C2.9,1 2,1.9 2,3V17H4V3H16V1M19,5H8C6.9,5 6,5.9 6,7V21C6,22.1 6.9,23 8,23H19C20.1,23 21,22.1 21,21V7C21,5.9 20.1,5 19,5M19,21H8V7H19V21Z" Width="16" Height="16" Foreground="#666" />
+                            <TextBlock Grid.Column="1" Text="Copy" VerticalAlignment="Center" />
+                            <TextBlock Name="CopyShortcut" Grid.Column="2" Text="Ctrl+C" VerticalAlignment="Center" Margin="28,0,0,0" Foreground="#888888" FontSize="12" />
+                        </Grid>
+                    </Button>
+                    <Button Classes="ListItem" Click="CutButton_Click">
+                        <Grid ColumnDefinitions="32,*,Auto">
+                            <PathIcon Data="M6.5,3A3.5,3.5 0 0,0 3,6.5A3.5,3.5 0 0,0 6.5,10C7.1,10 7.66,9.84 8.14,9.57L10.59,12L8.14,14.43C7.66,14.16 7.1,14 6.5,14A3.5,3.5 0 1,0 10,17.5C10,16.9 9.84,16.34 9.57,15.86L12,13.41L17.59,19H21V17.59L8.14,4.73C8.76,3.7 7.74,3 6.5,3M6.5,8A1.5,1.5 0 1,1 8,6.5A1.5,1.5 0 0,1 6.5,8M6.5,19A1.5,1.5 0 1,1 8,17.5A1.5,1.5 0 0,1 6.5,19M14.41,11L21,4.41V3H19.59L13,9.59Z" Width="16" Height="16" Foreground="#666" />
+                            <TextBlock Grid.Column="1" Text="Cut" VerticalAlignment="Center" />
+                            <TextBlock Name="CutShortcut" Grid.Column="2" Text="Ctrl+X" VerticalAlignment="Center" Margin="28,0,0,0" Foreground="#888888" FontSize="12" />
+                        </Grid>
+                    </Button>
+                    <Button Classes="ListItem" Click="PasteButton_Click">
+                        <Grid ColumnDefinitions="32,*,Auto">
+                            <PathIcon Data="M19,4H17.82C17.4,2.84 16.3,2 15,2H9C7.7,2 6.6,2.84 6.18,4H5C3.9,4 3,4.9 3,6V20C3,21.1 3.9,22 5,22H19C20.1,22 21,21.1 21,20V6C21,4.9 20.1,4 19,4M9,4H15V6H9V4M19,20H5V6H7V8H17V6H19V20Z" Width="16" Height="16" Foreground="#666" />
+                            <TextBlock Grid.Column="1" Text="Paste" VerticalAlignment="Center" />
+                            <TextBlock Name="PasteShortcut" Grid.Column="2" Text="Ctrl+V" VerticalAlignment="Center" Margin="28,0,0,0" Foreground="#888888" FontSize="12" />
+                        </Grid>
+                    </Button>
+
+                    <Border Name="ImageSettingSeparator" Height="1" Margin="4,10,4,6" Background="#00D0D0D0" IsHitTestVisible="False" IsVisible="False" />
+                    <Button Name="ImageSettingButton" Classes="ListItem" Click="ImageSetting_Click" IsVisible="False" HorizontalContentAlignment="Stretch">
+                        <Grid ColumnDefinitions="32,*,Auto">
+                            <PathIcon Data="M21,19V5C21,3.9 20.1,3 19,3H5C3.9,3 3,3.9 3,5V19C3,20.1 3.9,21 5,21H19C20.1,21 21,20.1 21,19M5,5H19V19H5V5M7,17L10.5,12.5L13,15.5L16.5,11L19,17H7Z" Width="16" Height="16" Foreground="#666" />
+                            <TextBlock Grid.Column="1" Text="Image setting" VerticalAlignment="Center" />
+                            <PathIcon Name="ImageSettingChevron" Grid.Column="2" Data="M7,10L12,15L17,10H7Z" Width="14" Height="14" Foreground="#777" />
+                        </Grid>
+                    </Button>
+                    <Button Name="CopyImageAddressButton" Classes="ListItem" Click="CopyImageAddressButton_Click" IsVisible="False" Margin="18,4,0,0"><Grid ColumnDefinitions="32,*"><PathIcon Data="M3.9,12A5,5 0 0,1 5.36,8.46L8.19,5.64A5,5 0 0,1 15.26,5.64L15.61,5.99L14.19,7.41L13.84,7.06A3,3 0 0,0 9.61,7.06L6.78,9.88A3,3 0 0,0 6.78,14.12L7.49,14.83L6.07,16.24L5.36,15.54A5,5 0 0,1 3.9,12M8.39,18.01L8.74,18.36A5,5 0 0,0 15.81,18.36L18.64,15.54A5,5 0 0,0 18.64,8.46L17.93,7.76L19.34,6.34L20.06,7.05A7,7 0 0,1 20.06,16.95L17.23,19.78A7,7 0 0,1 7.32,19.78L6.97,19.43L8.39,18.01M8,13H16V11H8V13Z" Width="16" Height="16" Foreground="#666"/><TextBlock Grid.Column="1" Text="Copy image address" VerticalAlignment="Center"/></Grid></Button>
+                    <Button Name="SaveImageButton" Classes="ListItem" Click="SaveImageButton_Click" IsVisible="False" Margin="18,4,0,0"><Grid ColumnDefinitions="32,*"><PathIcon Data="M5,20H19V18H5V20M19,9H15V3H9V9H5L12,16L19,9Z" Width="16" Height="16" Foreground="#666"/><TextBlock Grid.Column="1" Text="Save Image" VerticalAlignment="Center"/></Grid></Button>
+                    <Button Name="SearchWithButton" Classes="ListItem" Click="SearchWithButton_Click" IsVisible="False" Margin="18,4,0,0"><Grid ColumnDefinitions="32,*"><PathIcon Data="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z" Width="16" Height="16" Foreground="#666"/><TextBlock Name="SearchWithLabel" Grid.Column="1" Text="Search with Google" VerticalAlignment="Center"/></Grid></Button>
+
+                    <Border Name="AfterImageSettingSeparator" Height="1" Margin="4,10,4,6" Background="#00D0D0D0" IsHitTestVisible="False" IsVisible="False" />
+                    <Button Name="ToolsButton" Classes="ListItem" Click="Tools_Click" HorizontalContentAlignment="Stretch">
+                        <Grid ColumnDefinitions="32,*,Auto">
+                            <PathIcon Data="M22.7,19L13.6,9.9C14.5,7.6 14,4.9 12.1,3C10.1,1 7.1,0.6 4.7,1.7L9,6L6,9L1.6,4.7C0.4,7.1 0.9,10.1 2.9,12.1C4.8,14 7.5,14.5 9.8,13.6L18.9,22.7C19.3,23.1 20,23.1 20.4,22.7L22.7,20.4C23.1,20 23.1,19.3 22.7,19Z" Width="16" Height="16" Foreground="#666" />
+                            <TextBlock Grid.Column="1" Text="Tools" VerticalAlignment="Center" />
+                            <PathIcon Name="ToolsChevron" Grid.Column="2" Data="M7,10L12,15L17,10H7Z" Width="14" Height="14" Foreground="#777" />
+                        </Grid>
+                    </Button>
+                    <Button Name="DataManagerButton" Classes="ListItem" Click="ShowDataManager_Click" IsVisible="False" Margin="18,4,0,0"><Grid ColumnDefinitions="32,*"><PathIcon Data="M12,3C7.03,3 3,4.34 3,6V18C3,19.66 7.03,21 12,21C16.97,21 21,19.66 21,18V6C21,4.34 16.97,3 12,3M12,5C16.42,5 19,6.21 19,6.5S16.42,8 12,8S5,6.79 5,6.5S7.58,5 12,5M12,19C7.58,19 5,17.79 5,17.5V15.3C6.57,16.18 9.14,16.5 12,16.5S17.43,16.18 19,15.3V17.5C19,17.79 16.42,19 12,19M12,14.5C7.58,14.5 5,13.29 5,13V10.8C6.57,11.68 9.14,12 12,12S17.43,11.68 19,10.8V13C19,13.29 16.42,14.5 12,14.5Z" Width="16" Height="16" Foreground="#666"/><TextBlock Grid.Column="1" Text="Data Manager" VerticalAlignment="Center"/></Grid></Button>
+                    <Button Name="ResponsiveToolsButton" Classes="ListItem" Click="PageViewButton_Click" IsVisible="False" Margin="18,4,0,0"><Grid ColumnDefinitions="32,*"><PathIcon Data="M17,1H7C5.9,1 5,1.9 5,3V21C5,22.1 5.9,23 7,23H17C18.1,23 19,22.1 19,21V3C19,1.9 18.1,1 17,1M17,19H7V5H17V19M13,21H11V20H13V21Z" Width="16" Height="16" Foreground="#666"/><TextBlock Grid.Column="1" Text="Responsive tools" VerticalAlignment="Center"/></Grid></Button>
+                    <Button Name="CreateQrButton" Classes="ListItem" Click="CreateQrButton_Click" IsVisible="False" Margin="18,4,0,0"><Grid ColumnDefinitions="32,*"><PathIcon Data="M3,3H11V11H3V3M5,5V9H9V5H5M13,3H21V11H13V3M15,5V9H19V5H15M3,13H11V21H3V13M5,15V19H9V15H5M18,13H21V16H18V13M13,18H16V21H13V18M16,16H13V13H16V16M18,18H21V21H18V18Z" Width="16" Height="16" Foreground="#666"/><TextBlock Grid.Column="1" Text="Create QR" VerticalAlignment="Center"/></Grid></Button>
+                    <Button Classes="ListItem" Click="InspectButton_Click"><Grid ColumnDefinitions="32,*"><PathIcon Data="M8,3L3,8L8,13L9.41,11.59L5.83,8L9.41,4.41L8,3M16,3L14.59,4.41L18.17,8L14.59,11.59L16,13L21,8L16,3M11,20L13,20L14,16L12,16L11,20Z" Width="16" Height="16" Foreground="#666"/><TextBlock Grid.Column="1" Text="Inspect" VerticalAlignment="Center"/></Grid></Button>
+                    <Button Name="AiFunctionButton" Classes="ListItem" Click="AiFunction_Click">
+                        <Grid ColumnDefinitions="32,*,Auto">
+                            <PathIcon Data="M12,17.27L18.18,21L16.54,13.97L22,9.24L14.81,8.62L12,2L9.19,8.62L2,9.24L7.46,13.97L5.82,21L12,17.27Z" Width="16" Height="16" Foreground="#666"/>
+                            <TextBlock Grid.Column="1" Text="AI Function" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="2" Text="Ctrl+Shift+I" VerticalAlignment="Center" Margin="28,0,0,0" Foreground="#888888" FontSize="12" />
+                        </Grid>
+                    </Button>
+                    <Border Height="1" Margin="4,10,4,6" Background="#00D0D0D0" IsHitTestVisible="False" />
+                    <Button Name="CreateNexZenPinButton" Classes="ListItem" Click="CreateNexZenPin_Click" IsVisible="False">
+                        <Grid ColumnDefinitions="32,*"><PathIcon Data="M12,1A5,5 0 0,0 7,6V8H6A2,2 0 0,0 4,10V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V10A2,2 0 0,0 18,8H17V6A5,5 0 0,0 12,1M9,6A3,3 0 0,1 15,6V8H9V6M12,12A2,2 0 0,1 13,15.73V18H11V15.73A2,2 0 0,1 12,12Z" Width="16" Height="16" Foreground="#D32F2F"/><TextBlock Grid.Column="1" Text="Create NexZen PIN" Foreground="#D32F2F" VerticalAlignment="Center" /></Grid>
+                    </Button>
+                    <Button Name="ResetNexZenPinButton" Classes="ListItem" Click="ResetNexZenPin_Click" IsVisible="False"><Grid ColumnDefinitions="32,*"><PathIcon Data="M12,4V1L8,5L12,9V6A6,6 0 1,1 6,12H4A8,8 0 1,0 12,4Z" Width="16" Height="16" Foreground="#666"/><TextBlock Grid.Column="1" Text="Reset NexZen PIN" VerticalAlignment="Center"/></Grid></Button>
+                </StackPanel>
+                
+                <StackPanel Name="SearchSuggestionPanel" IsVisible="{Binding IsSearchSuggestionVisible}" Width="400">
+                    <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,10">
+                        <Button Grid.Column="0" Click="CloseSearchSuggestion_Click" Background="Transparent" Width="30" Height="30" CornerRadius="15">
+                            <PathIcon Data="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" Width="16" Height="16" Foreground="#333" />
+                        </Button>
+                        <TextBlock Grid.Column="1" Text="Search suggestions" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Foreground="#333" Margin="10,0,0,0" />
+                    </Grid>
+                    <ScrollViewer Name="SearchSuggestionScroll" MaxHeight="300">
+                        <ItemsControl ItemsSource="{Binding SearchSuggestions}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="sys:String">
+                                    <Button Classes="ListItem" Click="SuggestionItem_Click" Tag="{Binding}">
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <PathIcon Grid.Column="0" Data="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z" Width="14" Height="14" Foreground="#999" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="1" Text="{Binding}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+                
+                <StackPanel Name="HistoryListPanel" IsVisible="False" Width="300">
+                    <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,10">
+                        <Button Grid.Column="0" Click="CloseHistoryList_Click" Background="Transparent" Width="30" Height="30" CornerRadius="15">
+                            <PathIcon Data="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" Width="16" Height="16" Foreground="#333" />
+                        </Button>
+                        <TextBlock Grid.Column="1" Text="Recent history" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#333" />
+                    </Grid>
+                    <ScrollViewer Name="HistoryScroll" MaxHeight="300">
+                        <ItemsControl Name="HistoryItemsControl">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="sys:String">
+                                    <Button Classes="ListItem" Content="{Binding}" Click="HistoryItem_Click">
+                                        <Button.Styles>
+                                            <Style Selector="Button.ListItem">
+                                                <Setter Property="Height" Value="38" />
+                                                <Setter Property="Padding" Value="12,0" />
+                                                <Setter Property="TextBlock.TextWrapping" Value="NoWrap" />
+                                                <Setter Property="TextBlock.TextTrimming" Value="CharacterEllipsis" />
+                                            </Style>
+                                        </Button.Styles>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+
+                <!-- Bookmark List Panel -->
+                <StackPanel Name="BookmarkListPanel" IsVisible="False" Width="300">
+                    <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,10">
+                        <Button Grid.Column="0" Click="CloseBookmarkList_Click" Background="Transparent" Width="30" Height="30" CornerRadius="15">
+                            <PathIcon Data="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" Width="16" Height="16" Foreground="#333" />
+                        </Button>
+                        <TextBlock Grid.Column="1" Text="Bookmarks" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#333" />
+                    </Grid>
+                    <TextBox Text="{Binding BookmarkSearchQuery}" PlaceholderText="Search bookmarks..." Margin="0,0,0,10" Background="#FFFFFF" BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="6" Padding="8,4" />
+                    <ScrollViewer Name="BookmarkScroll" MaxHeight="260">
+                        <ItemsControl ItemsSource="{Binding FilteredBookmarks}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="models:Bookmark">
+                                    <Grid>
+                                        <Button Classes="ListItem" Click="BookmarkItem_Click" Tag="{Binding Url}">
+                                            <Button.Styles>
+                                                <Style Selector="Button.ListItem">
+                                                    <Setter Property="Height" Value="38" />
+                                                    <Setter Property="Padding" Value="12,0,40,0" />
+                                                </Style>
+                                            </Button.Styles>
+                                            <Grid ColumnDefinitions="Auto,*">
+                                                <PathIcon Grid.Column="0" Data="M17,3H7C5.9,3 5.01,3.9 5.01,5L5,21L12,18L19,21V5C19,3.9 18.1,3 17,3Z" Width="14" Height="14" Foreground="#FFC107" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="1" Text="{Binding Title}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                            </Grid>
+                                        </Button>
+                                        <Button Click="DeleteBookmark_Click" Tag="{Binding Id}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0" Width="26" Height="26" CornerRadius="13" Background="Transparent" Padding="0" Cursor="Hand" ToolTip.Tip="Remove bookmark">
+                                            <PathIcon Data="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" Width="14" Height="14" Foreground="#999" />
+                                        </Button>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+
+                <StackPanel Name="ExtensionPanel" IsVisible="False" Width="340">
+                    <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,10">
+                        <Button Grid.Column="0" Click="CloseExtensionList_Click" Background="Transparent" Width="30" Height="30" CornerRadius="15">
+                            <PathIcon Data="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" Width="16" Height="16" Foreground="#333" />
+                        </Button>
+                        <TextBlock Grid.Column="1" Text="Extensions" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#333" />
+                    </Grid>
+                    <Grid ColumnDefinitions="*,*" Margin="0,0,0,4">
+                        <Button Grid.Column="0" Classes="ListItem" Content="Install from folder" HorizontalContentAlignment="Center" Margin="0,4,4,0" Click="InstallExtension_Click" BorderThickness="1" BorderBrush="#D1D1D1" />
+                        <Button Grid.Column="1" Classes="ListItem" Content="Store" HorizontalContentAlignment="Center" Margin="4,4,0,0" Click="OpenExtensionStore_Click" BorderThickness="1" BorderBrush="#D1D1D1" />
+                    </Grid>
+                    <TextBlock Text="No extensions yet" Foreground="#666666" FontSize="13" Margin="4,8"
+                               IsVisible="{Binding !HasExtensions}" />
+                    <ScrollViewer Name="ExtensionScroll" MaxHeight="320">
+                        <ItemsControl ItemsSource="{Binding Extensions}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ExtensionItemViewModel">
+                                    <Border Classes="ListItem" Height="64" Padding="10,6" Margin="0,4,0,0">
+                                        <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <Image Grid.Column="0" Source="{Binding Icon}" Width="32" Height="32" Margin="0,0,12,0" VerticalAlignment="Center">
+                                                <Image.IsVisible>
+                                                    <Binding Path="Icon" Converter="{x:Static ObjectConverters.IsNotNull}" />
+                                                </Image.IsVisible>
+                                            </Image>
+                                            <PathIcon Grid.Column="0" Data="M18,6H16C16,3.79 14.21,2 12,2C9.79,2 8,3.79 8,6H6C4.9,6 4,6.9 4,8V20C4,21.1 4.9,22 6,22H18C19.1,22 20,21.1 20,20V8C20,6.9 19.1,6 18,6M12,4C13.1,4 14,4.9 14,6H10C10,4.9 10.9,4 12,4M18,20H6V8H8V10C8,10.55 8.45,11 9,11C9.55,11 10,10.55 10,10V8H14V10C14,10.55 14.45,11 15,11C15.55,11 16,10.55 16,10V8H18V20Z" Width="24" Height="24" Foreground="#999" Margin="0,0,12,0" VerticalAlignment="Center">
+                                                <PathIcon.IsVisible>
+                                                    <Binding Path="Icon" Converter="{x:Static ObjectConverters.IsNull}" />
+                                                </PathIcon.IsVisible>
+                                            </PathIcon>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="13" Foreground="#333333" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding Version}" FontSize="11" Foreground="#888888" />
+                                                <TextBlock Text="{Binding Status}" FontSize="11" Foreground="#4CAF50" />
+                                            </StackPanel>
+                                            <Button Grid.Column="2" Content="Run" Click="RunExtension_Click" Tag="{Binding Id}"
+                                                    IsVisible="{Binding !IsRunning}"
+                                                    Margin="8,0,0,0" Padding="10,4" VerticalAlignment="Center"
+                                                    Background="#F5F5F5" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="6"
+                                                    Foreground="#333333" Cursor="Hand" />
+                                            <Button Grid.Column="2" Content="Stop" Click="StopExtension_Click" Tag="{Binding Id}"
+                                                    IsVisible="{Binding IsRunning}"
+                                                    Margin="8,0,0,0" Padding="10,4" VerticalAlignment="Center"
+                                                    Background="#FFEBEE" BorderBrush="#E57373" BorderThickness="1" CornerRadius="6"
+                                                    Foreground="#D32F2F" Cursor="Hand" />
+                                            <Button Grid.Column="3" Click="DeleteExtension_Click" Tag="{Binding Id}"
+                                                    Width="24" Height="24" Margin="8,0,0,0" Padding="0" VerticalAlignment="Center"
+                                                    Background="Transparent" BorderThickness="0" Cursor="Hand" ToolTip.Tip="Remove">
+                                                <PathIcon Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"
+                                                          Width="12" Height="12" Foreground="#E53935" />
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+
+                <StackPanel Name="VisitHistoryPanel" IsVisible="False" Width="340">
+                    <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,10">
+                        <Button Grid.Column="0" Click="CloseVisitHistory_Click" Background="Transparent" Width="30" Height="30" CornerRadius="15">
+                            <PathIcon Data="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" Width="16" Height="16" Foreground="#333" />
+                        </Button>
+                        <TextBlock Grid.Column="1" Text="History" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#333" />
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,10">
+                        <TextBox Grid.Column="0" Text="{Binding HistorySearchQuery}" PlaceholderText="Search by title or domain..." Margin="0,0,6,0" Background="#FFFFFF" BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="6" Padding="8,4" />
+                        <CalendarDatePicker Grid.Column="1" Width="132" PlaceholderText="Date"
+                                            SelectedDate="{Binding HistorySelectedDate}"
+                                            SelectedDateFormat="Short" />
+                        <Button Grid.Column="2" Command="{Binding ClearHistoryDateCommand}"
+                                IsVisible="{Binding HasHistoryDateFilter}"
+                                Width="28" Height="28" Margin="4,0,0,0" Padding="0"
+                                Background="Transparent" BorderThickness="0" Cursor="Hand" ToolTip.Tip="Clear date filter">
+                            <PathIcon Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"
+                                      Width="12" Height="12" Foreground="#888888" />
+                        </Button>
+                    </Grid>
+                    <TextBlock Text="No history yet" Foreground="#666666" FontSize="13" Margin="4,8"
+                               IsVisible="{Binding ShowEmptyHistory}" />
+                    <TextBlock Text="No results" Foreground="#666666" FontSize="13" Margin="4,8"
+                               IsVisible="{Binding ShowNoHistoryMatch}" />
+                    <ListBox Name="VisitHistoryList"
+                             ItemsSource="{Binding VisitHistory}"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             Padding="0"
+                             MaxHeight="360"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <ListBox.Styles>
+                            <Style Selector="ListBoxItem">
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="Margin" Value="0" />
+                                <Setter Property="MinHeight" Value="0" />
+                                <Setter Property="Background" Value="Transparent" />
+                            </Style>
+                            <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+                                <Setter Property="Background" Value="Transparent" />
+                            </Style>
+                            <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+                                <Setter Property="Background" Value="Transparent" />
+                            </Style>
+                            <Style Selector="ListBoxItem:focus /template/ ContentPresenter">
+                                <Setter Property="Background" Value="Transparent" />
+                            </Style>
+                        </ListBox.Styles>
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:VisitHistoryRow">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Header}" FontWeight="Bold" FontSize="13" Foreground="#666666"
+                                                   Margin="4,10,0,4" IsVisible="{Binding IsHeader}" />
+                                        <Border Classes="ListItem" Height="50" Padding="6,6" Margin="0,4,0,0" IsVisible="{Binding !IsHeader}">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <Button Grid.Column="0" Click="VisitHistoryItem_Click" Tag="{Binding Url}"
+                                                        Background="Transparent" BorderThickness="0" Padding="0"
+                                                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                                        VerticalAlignment="Center" Cursor="Hand">
+                                                    <StackPanel>
+                                                        <TextBlock Text="{Binding Title}" FontWeight="Medium"
+                                                                   Foreground="#212121" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Text="{Binding Url}" FontSize="12" Foreground="#0066CC" Margin="0,3,0,0"
+                                                                   TextTrimming="CharacterEllipsis" />
+                                                    </StackPanel>
+                                                </Button>
+                                                <StackPanel Grid.Column="1" Margin="8,0,0,0" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                    <Button Click="DeleteVisit_Click" Tag="{Binding Id}"
+                                                            Width="24" Height="24" Padding="0" Background="Transparent" BorderThickness="0"
+                                                            HorizontalAlignment="Center" Cursor="Hand" ToolTip.Tip="Remove">
+                                                        <PathIcon Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"
+                                                                  Width="12" Height="12" Foreground="#E53935" />
+                                                    </Button>
+                                                    <TextBlock Text="{Binding Time}" FontSize="12" Foreground="#888888"
+                                                               HorizontalAlignment="Center" Margin="0,2,0,0" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </StackPanel>
+                                </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <Button Name="HistoryMoreButton" Classes="ListItem" Content="Show more"
+                            HorizontalContentAlignment="Center" Click="ShowMoreHistory_Click" BorderThickness="1" BorderBrush="#E6E6E6" />
+                </StackPanel>
+
+                <StackPanel Name="TabListPanel" IsVisible="False">
+                    <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,10">
+                        <Button Grid.Column="0" Click="CloseTabList_Click" Background="Transparent" Width="30" Height="30" CornerRadius="15">
+                            <PathIcon Data="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" Width="16" Height="16" Foreground="#333" />
+                        </Button>
+                        <TextBlock Grid.Column="1" Text="Tabs" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#333" />
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                            <Button Name="Row1Button" Content="1 row" Click="TabRows_Click" Tag="1" Padding="8,4" FontSize="14" CornerRadius="6" Cursor="Hand" />
+                            <Button Name="Row2Button" Content="2 rows" Click="TabRows_Click" Tag="2" Padding="8,4" FontSize="14" CornerRadius="6" Cursor="Hand" />
+                            <Button Name="Row3Button" Content="3 rows" Click="TabRows_Click" Tag="3" Padding="8,4" FontSize="14" CornerRadius="6" Cursor="Hand" />
+                        </StackPanel>
+                    </Grid>
+                    <ScrollViewer Name="TabScroll"
+                                  Padding="6,8,8,16"
+                                  HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Disabled">
+                        <ItemsControl Name="TabItems" ItemsSource="{Binding Tabs}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal" ItemWidth="198" ItemHeight="266" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:TabItemViewModel">
+                                    <StackPanel Width="198" Height="266" Spacing="4">
+                                        <Grid Width="198" Height="230">
+                                            <Border Width="186" Height="222" CornerRadius="12" Background="White"
+                                                    BorderBrush="#D0D0D0" BorderThickness="2"
+                                                    HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,4,0,0"
+                                                    BoxShadow="0 4 10 0 #40000000"
+                                                    IsVisible="{Binding !IsActive}" />
+                                            <Border Width="186" Height="222" CornerRadius="12" Background="White"
+                                                    BorderBrush="#4CAF50" BorderThickness="2"
+                                                    HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,4,0,0"
+                                                    BoxShadow="0 4 10 0 #40000000"
+                                                    IsVisible="{Binding IsActive}" />
+                                            <Border Width="182" Height="218" CornerRadius="10" ClipToBounds="True"
+                                                    HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,6,0,0">
+                                                <Button Click="TabItem_Click" Tag="{Binding Id}" Padding="0" Background="Transparent" BorderThickness="0" CornerRadius="10"
+                                                        HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                                        HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+                                                    <DockPanel>
+                                                        <Border DockPanel.Dock="Bottom" Background="#FFFFFF" Height="36" Padding="8,0">
+                                                            <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold"
+                                                                       Foreground="#333333" VerticalAlignment="Center"
+                                                                       TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                                        </Border>
+                                                        <Image Source="{Binding ThumbnailSource}" Stretch="UniformToFill" />
+                                                    </DockPanel>
+                                                </Button>
+                                            </Border>
+                                            <Button Click="CloseTabItem_Click" Tag="{Binding Id}"
+                                                    HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                    Width="24" Height="24" Padding="0" Margin="0,10,10,0"
+                                                    Background="#CCFFFFFF" BorderThickness="0" CornerRadius="12"
+                                                    Cursor="Hand" ToolTip.Tip="Close tab">
+                                                <PathIcon Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"
+                                                          Width="12" Height="12" Foreground="#E53935" />
+                                            </Button>
+                                        </Grid>
+                                        <Button Click="OpenTabInNewWindow_Click" Tag="{Binding Id}"
+                                                Height="32" Margin="6,0" Padding="6,0"
+                                                Background="#F5F5F5" BorderBrush="#D0D0D0" BorderThickness="1"
+                                                CornerRadius="6" Cursor="Hand" HorizontalContentAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                                                <PathIcon Data="M19,19H5V5H12V3H5C3.9,3 3,3.9 3,5V19C3,20.1 3.9,21 5,21H19C20.1,21 21,20.1 21,19V12H19V19M14,3V5H17.59L8.46,14.13L9.87,15.54L19,6.41V10H21V3H14Z" Width="14" Height="14" Foreground="#444" />
+                                                <TextBlock Text="Open new window" FontSize="12" Foreground="#333" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+
+                <!-- Download List Panel -->
+                <StackPanel Name="DownloadListPanel" IsVisible="False" Width="400">
+                    <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,10">
+                        <Button Grid.Column="0" Click="CloseDownloadList_Click" Background="Transparent" Width="30" Height="30" CornerRadius="15">
+                            <PathIcon Data="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" Width="16" Height="16" Foreground="#333" />
+                        </Button>
+                        <TextBlock Grid.Column="1" Text="Downloads" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#333" />
+                    </Grid>
+
+                    <!--<WrapPanel Margin="0,0,0,10" HorizontalAlignment="Center">
+                        <Button Command="{Binding TestDownloadCommand}" CommandParameter="zip" Content="Zip" Margin="2" Background="#F5F5F5" BorderBrush="#E0E0E0" CornerRadius="6" Foreground="#333" Cursor="Hand" FontSize="12" Padding="8,4" />
+                        <Button Command="{Binding TestDownloadCommand}" CommandParameter="exe" Content="Exe" Margin="2" Background="#F5F5F5" BorderBrush="#E0E0E0" CornerRadius="6" Foreground="#333" Cursor="Hand" FontSize="12" Padding="8,4" />
+                        <Button Command="{Binding TestDownloadCommand}" CommandParameter="image" Content="Image" Margin="2" Background="#F5F5F5" BorderBrush="#E0E0E0" CornerRadius="6" Foreground="#333" Cursor="Hand" FontSize="12" Padding="8,4" />
+                        <Button Command="{Binding TestDownloadCommand}" CommandParameter="video" Content="Video" Margin="2" Background="#F5F5F5" BorderBrush="#E0E0E0" CornerRadius="6" Foreground="#333" Cursor="Hand" FontSize="12" Padding="8,4" />
+                        <Button Command="{Binding TestDownloadCommand}" CommandParameter="pdf" Content="PDF" Margin="2" Background="#F5F5F5" BorderBrush="#E0E0E0" CornerRadius="6" Foreground="#333" Cursor="Hand" FontSize="12" Padding="8,4" />
+                    </WrapPanel>-->
+                    <ScrollViewer Name="DownloadScroll" MaxHeight="400" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding Downloads}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:DownloadItemViewModel">
+                                    <Border Background="#FFFFFF" BorderBrush="#CFCFCF" BorderThickness="1" CornerRadius="6" Padding="6" Margin="0,0,0,8">
+                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                            <PathIcon Grid.Column="0" Data="{Binding FileIconPath, Converter={StaticResource StringGeometryConverter}}" Width="20" Height="20" Foreground="#333" Margin="0,0,12,0" VerticalAlignment="Center" />
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,8,0">
+                                                <TextBlock Text="{Binding FileName}" FontWeight="Medium" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding Url}" FontSize="11" Foreground="#0066CC" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" Cursor="Hand" PointerPressed="DownloadUrl_PointerPressed" ToolTip.Tip="{Binding Url}" />
+                                                <TextBlock Text="{Binding FormattedStatus}" FontSize="12" Foreground="#666" Margin="0,2,0,0" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                                <Button Command="{Binding PauseCommand}" IsVisible="{Binding IsDownloading}" Background="Transparent" Width="26" Height="26" CornerRadius="13" Padding="0" Cursor="Hand" ToolTip.Tip="Pause">
+                                                    <PathIcon Data="M14,19H18V5H14M6,19H10V5H6V19Z" Width="12" Height="12" Foreground="#999" />
+                                                </Button>
+                                                <Button Command="{Binding ResumeCommand}" IsVisible="{Binding IsPaused}" Background="Transparent" Width="26" Height="26" CornerRadius="13" Padding="0" Cursor="Hand" ToolTip.Tip="Resume">
+                                                    <PathIcon Data="M8,5.14V19.14L19,12.14L8,5.14Z" Width="12" Height="12" Foreground="#999" />
+                                                </Button>
+                                                <Button Command="{Binding CancelCommand}" IsVisible="{Binding IsNotCompleted}" Background="Transparent" Width="26" Height="26" CornerRadius="13" Padding="0" Cursor="Hand" ToolTip.Tip="Cancel">
+                                                    <PathIcon Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" Width="12" Height="12" Foreground="#999" />
+                                                </Button>
+                                                <Button Command="{Binding OpenFolderCommand}" IsVisible="{Binding IsCompleted}" Background="Transparent" Width="26" Height="26" CornerRadius="13" Padding="0" Cursor="Hand" ToolTip.Tip="Open folder">
+                                                    <PathIcon Data="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z" Width="14" Height="14" Foreground="#999" />
+                                                </Button>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+
+                <!-- Saved Passwords Panel -->
+                <StackPanel Name="SavedPasswordPanel" IsVisible="False" Width="360">
+                    <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,10">
+                        <Button Grid.Column="0" Click="CloseSavedPasswords_Click" Background="Transparent" Width="30" Height="30" CornerRadius="15">
+                            <PathIcon Data="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" Width="16" Height="16" Foreground="#333" />
+                        </Button>
+                        <TextBlock Grid.Column="1" Text="Saved passwords" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#333" />
+                    </Grid>
+                    <TextBlock Text="Passwords are encrypted in the local database." FontSize="12" Foreground="#666" TextWrapping="Wrap" Margin="4,0,4,8" />
+                    <TextBlock Text="No saved passwords" IsVisible="{Binding IsSavedPasswordListEmpty}" Margin="4,8" Foreground="#777" />
+                    <ScrollViewer MaxHeight="400" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding SavedPasswords}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:SavedPasswordItemViewModel">
+                                    <Border Background="#FFFFFF" BorderBrush="#D8D8D8" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,8">
+                                        <Grid ColumnDefinitions="*,Auto,Auto" RowDefinitions="Auto,Auto,Auto">
+                                            <TextBlock Grid.Row="0" Grid.ColumnSpan="3" Text="{Binding Origin}" FontSize="12" Foreground="#666" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding Username}" FontSize="14" Foreground="#222" TextTrimming="CharacterEllipsis" Margin="0,4,4,0" />
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding PasswordDisplay}" FontSize="13" Foreground="#555" TextTrimming="CharacterEllipsis" Margin="0,4,4,0" />
+                                            <Button Grid.Row="1" Grid.Column="1" Grid.RowSpan="2" Click="ToggleSavedPassword_Click" Tag="{Binding Id}" Width="32" Height="32" Padding="0" Margin="2" Background="Transparent" BorderThickness="0" ToolTip.Tip="{Binding RevealButtonToolTip}">
+                                                <Grid Width="18" Height="18">
+                                                    <PathIcon Data="M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5M12,17C9.24,17 7,14.76 7,12C7,9.24 9.24,7 12,7C14.76,7 17,9.24 17,12C17,14.76 14.76,17 12,17M12,9C10.34,9 9,10.34 9,12C9,13.66 10.34,15 12,15C13.66,15 15,13.66 15,12C15,10.34 13.66,9 12,9Z" Width="18" Height="18" Foreground="#666" IsVisible="{Binding IsRevealed}" />
+                                                    <PathIcon Data="M2,4.27L3.28,3L21,20.72L19.73,22L16.54,18.81C15.15,19.57 13.62,20 12,20C7,20 2.73,16.89 1,12.5C1.69,10.75 2.8,9.25 4.18,8.09L2,5.91V4.27M12,5C17,5 21.27,8.11 23,12.5C22.13,14.72 20.5,16.53 18.44,17.69L15.86,15.11C16.56,14.42 17,13.5 17,12.5A5,5 0 0,0 10,8.21L7.55,5.76C8.91,5.27 10.43,5 12,5M12,10A2.5,2.5 0 0,1 14.5,12.5C14.5,12.78 14.45,13.04 14.37,13.29L11.21,10.13C11.46,10.05 11.72,10 12,10Z" Width="18" Height="18" Foreground="#666" IsVisible="{Binding IsPasswordHidden}" />
+                                                </Grid>
+                                            </Button>
+                                            <Button Grid.Row="1" Grid.Column="2" Grid.RowSpan="2" Click="DeleteSavedPassword_Click" Tag="{Binding Id}" Width="28" Height="28" Padding="0" Background="Transparent" BorderThickness="0" ToolTip.Tip="Delete saved password">
+                                                <PathIcon Data="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" Width="14" Height="14" Foreground="#999" />
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+
+                <StackPanel Name="ResetPinPanel" IsVisible="False" Width="340" Spacing="8">
+                    <StackPanel.Styles>
+                        <Style Selector="TextBox.Soft">
+                            <Setter Property="CornerRadius" Value="10" />
+                            <Setter Property="Padding" Value="12,8" />
+                            <Setter Property="Background" Value="#FFFFFF" />
+                            <Setter Property="BorderBrush" Value="#D8D8D8" />
+                            <Setter Property="BorderThickness" Value="1" />
+                            <Setter Property="Foreground" Value="#2A2A2A" />
+                        </Style>
+                        <Style Selector="Button.PinOk">
+                            <Setter Property="Background" Value="#C4F0D0" />
+                            <Setter Property="Foreground" Value="#1F4A2C" />
+                            <Setter Property="BorderThickness" Value="0" />
+                            <Setter Property="CornerRadius" Value="12" />
+                            <Setter Property="Padding" Value="12,10" />
+                            <Setter Property="FontSize" Value="14" />
+                            <Setter Property="Cursor" Value="Hand" />
+                            <Setter Property="HorizontalContentAlignment" Value="Center" />
+                        </Style>
+                        <Style Selector="Button.PinOk:pointerover /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#AFE6BE" />
+                        </Style>
+                        <Style Selector="Button.PinBlue">
+                            <Setter Property="Background" Value="#BFE4F6" />
+                            <Setter Property="Foreground" Value="#1F3A4D" />
+                            <Setter Property="BorderThickness" Value="0" />
+                            <Setter Property="CornerRadius" Value="12" />
+                            <Setter Property="Padding" Value="12,10" />
+                            <Setter Property="FontSize" Value="14" />
+                            <Setter Property="Cursor" Value="Hand" />
+                            <Setter Property="HorizontalContentAlignment" Value="Center" />
+                        </Style>
+                        <Style Selector="Button.PinBlue:pointerover /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#A9D7EE" />
+                        </Style>
+                        <Style Selector="Button.PinDanger">
+                            <Setter Property="Background" Value="#F3C7BC" />
+                            <Setter Property="Foreground" Value="#5A2E26" />
+                            <Setter Property="BorderThickness" Value="0" />
+                            <Setter Property="CornerRadius" Value="12" />
+                            <Setter Property="Padding" Value="12,10" />
+                            <Setter Property="FontSize" Value="14" />
+                            <Setter Property="Cursor" Value="Hand" />
+                            <Setter Property="HorizontalContentAlignment" Value="Center" />
+                        </Style>
+                        <Style Selector="Button.PinDanger:pointerover /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#EBB3A6" />
+                        </Style>
+                    </StackPanel.Styles>
+                    <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,4">
+                        <Button Grid.Column="0" Click="CloseResetPin_Click" Background="Transparent" Width="30" Height="30" CornerRadius="15">
+                            <PathIcon Data="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" Width="16" Height="16" Foreground="#333" />
+                        </Button>
+                        <TextBlock Grid.Column="1" Text="Reset NexZen PIN" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#2A2A2A" />
+                    </Grid>
+                    <StackPanel x:Name="ResetPinEntryForm" Spacing="8">
+                        <TextBlock Text="Enter a new six-digit PIN and your recovery key." FontSize="13" Foreground="#4A4A4A" TextWrapping="Wrap" />
+                        <TextBox x:Name="ResetNewPinInput" Classes="Soft" PlaceholderText="New 6 digit PIN" PasswordChar="●" MaxLength="6" MinHeight="38" />
+                        <TextBox x:Name="ResetRecoveryKeyInput" Classes="Soft" PlaceholderText="Recovery key" MinHeight="38" />
+                        <TextBlock x:Name="ResetPinStatus" FontSize="13" TextWrapping="Wrap" />
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                            <Button Grid.Column="0" Classes="PinOk" Content="Reset" Click="SubmitResetNexZenPin_Click" />
+                            <Button Grid.Column="1" Classes="PinDanger" Content="Delete PIN" Click="DeletePin_Click" />
+                        </Grid>
+                    </StackPanel>
+                    <StackPanel x:Name="DeletePinConfirmPanel" IsVisible="False" Spacing="8">
+                        <TextBlock Text="Delete NexZen PIN and all saved browser data?" FontSize="14" FontWeight="SemiBold" Foreground="#5A2E26" TextWrapping="Wrap" />
+                        <TextBlock Text="This permanently deletes the PIN and recovery key, saved passwords, bookmarks, browsing history, and download records from the database." FontSize="13" Foreground="#4A4A4A" TextWrapping="Wrap" />
+                        <TextBlock x:Name="DeletePinStatus" FontSize="13" TextWrapping="Wrap" />
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                            <Button x:Name="CancelDeletePinButton" Grid.Column="0" Classes="PinBlue" Content="Cancel" Click="CancelDeletePin_Click" />
+                            <Button x:Name="ConfirmDeletePinButton" Grid.Column="1" Classes="PinDanger" Content="Delete everything" Click="ConfirmDeletePin_Click" />
+                        </Grid>
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Name="DeviceListPanel" IsVisible="False" Width="250">
+                    <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,10">
+                        <Button Grid.Column="0" Click="CloseDeviceList_Click" Background="Transparent" Width="30" Height="30" CornerRadius="15">
+                            <PathIcon Data="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" Width="16" Height="16" Foreground="#333" />
+                        </Button>
+                        <TextBlock Grid.Column="1" Text="Select device" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Foreground="#333" Margin="10,0,0,0" />
+                    </Grid>
+                    <ScrollViewer MaxHeight="300">
+                        <ItemsControl ItemsSource="{Binding NexShare.DiscoveredDevices}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Classes="ListItem" Click="DeviceItem_Click" Tag="{Binding}">
+                                        <TextBlock Text="{Binding DeviceName}" VerticalAlignment="Center" />
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+
+                <StackPanel Name="DataManagerPanel" IsVisible="False" Width="380">
+                    <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,10">
+                        <Button Grid.Column="0" Click="CloseDataManager_Click" Background="Transparent" Width="30" Height="30" CornerRadius="15">
+                            <PathIcon Data="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" Width="16" Height="16" Foreground="#333" />
+                        </Button>
+                        <TextBlock Grid.Column="1" Text="Data Manager" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Foreground="#333" Margin="10,0,0,0" />
+                    </Grid>
+                    <ScrollViewer Name="DataManagerScroll" MaxHeight="480">
+                        <StackPanel>
+                            <TextBlock Text="Time range" FontSize="13" Foreground="#666" Margin="0,0,0,4" />
+                            <ComboBox Name="DataTimeRange" SelectedIndex="2" HorizontalAlignment="Stretch" FontSize="14" Foreground="#333" Background="#FFFFFF">
+                                <ComboBoxItem Content="Last 15 minutes" Tag="15m" />
+                                <ComboBoxItem Content="Last 60 minutes" Tag="60m" />
+                                <ComboBoxItem Content="Last 24 hours" Tag="24h" />
+                                <ComboBoxItem Content="Last 7 days" Tag="7d" />
+                                <ComboBoxItem Content="All time" Tag="all" />
+                            </ComboBox>
+
+                            <TextBlock Text="Scope" FontSize="13" Foreground="#666" Margin="0,10,0,4" />
+                            <ComboBox Name="DataScope" SelectedIndex="0" HorizontalAlignment="Stretch" FontSize="14" Foreground="#333" Background="#FFFFFF">
+                                <ComboBoxItem Content="All sites" />
+                                <ComboBoxItem Content="One site" />
+                            </ComboBox>
+                            <TextBox Name="DataDomainBox" PlaceholderText="example.com" IsVisible="False"
+                                     FontSize="14" Foreground="#333" Background="#FFFFFF"
+                                     BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="6"
+                                     Padding="8,6" Margin="0,8,0,0" />
+
+                            <TextBlock Text="Data to delete" FontSize="13" Foreground="#666" Margin="0,12,0,4" />
+                            <CheckBox Name="DataHistoryBox" Content="History" FontSize="14" Foreground="#333" Margin="0,2" />
+                            <CheckBox Name="DataCookiesBox" Content="Cookies and other site data" FontSize="14" Foreground="#333" Margin="0,2" />
+                            <CheckBox Name="DataCacheBox" Content="Cached images and files" FontSize="14" Foreground="#333" Margin="0,2" />
+                            <CheckBox Name="DataDownloadsBox" Content="Download history" FontSize="14" Foreground="#333" Margin="0,2" />
+                            <CheckBox Name="DataAutofillBox" Content="Autofill data" FontSize="14" Foreground="#333" Margin="0,2" />
+                            <CheckBox Name="DataSettingsBox" Content="Site settings" FontSize="14" Foreground="#333" Margin="0,2" />
+                            <CheckBox Name="DataHostedBox" Content="Hosted app data" FontSize="14" Foreground="#333" Margin="0,2" />
+
+                            <TextBlock Text="Download history removes the list, not the files on disk."
+                                       FontSize="12" Foreground="#666" TextWrapping="Wrap" Margin="0,8,0,0" />
+                            <Button Name="DataDeleteButton" Content="Delete data" Click="DeleteData_Click"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                    Height="32" Margin="0,8,0,0" CornerRadius="6"
+                                    Background="#FDECEC" Foreground="#C0392B" BorderBrush="#E6B0B0" BorderThickness="1"
+                                    Cursor="Hand" />
+                            <TextBlock Name="DataStatusText" FontSize="13" Foreground="#333" TextWrapping="Wrap" Margin="0,8,0,0" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </StackPanel>
+</UserControl>

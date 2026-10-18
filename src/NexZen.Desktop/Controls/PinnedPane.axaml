@@ -1,0 +1,135 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="NexZen.Desktop.Controls.PinnedPane"
+             MinWidth="280" MinHeight="0"
+             HorizontalAlignment="Left" VerticalAlignment="Top"
+             ClipToBounds="False"
+             IsVisible="False" ZIndex="40">
+  <Grid>
+    <Border Name="Elevation" CornerRadius="12" Background="Transparent" IsHitTestVisible="False"
+            BoxShadow="0 4 50 0 #99000000, 0 18 42 0 #5C000000"/>
+    <Border Name="Frame" Background="#FFFFFF" BorderBrush="#CCCCCC" BorderThickness="1"
+            CornerRadius="12" ClipToBounds="True">
+      <Grid RowDefinitions="Auto,*">
+        <Border Name="Toolbar" Background="#FFFFFF" BorderBrush="#E6E6E6" BorderThickness="0,0,0,1" Padding="6,6">
+          <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto">
+            <Border Name="DragGrip" Grid.Column="0" Width="30" Height="30" Margin="0,0,4,0"
+                    CornerRadius="15" Background="Transparent" Cursor="SizeAll" ToolTip.Tip="Move">
+              <PathIcon Width="16" Height="16" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#666666"
+                        Data="M9,3H11V5H9V3M13,3H15V5H13V3M9,7H11V9H9V7M13,7H15V9H13V7M9,11H11V13H9V11M13,11H15V13H13V11M9,15H11V17H9V15M13,15H15V17H13V15M9,19H11V21H9V19M13,19H15V21H13V19Z"/>
+            </Border>
+            <Button Name="BackButton" Grid.Column="1" Classes="nav" ToolTip.Tip="Back" IsEnabled="False">
+              <PathIcon Width="14" Height="14" Foreground="#333333"
+                        Data="M15.41,16.58L10.83,12L15.41,7.41L14,6L8,12L14,18L15.41,16.58Z"/>
+            </Button>
+            <Button Name="ForwardButton" Grid.Column="2" Classes="nav" ToolTip.Tip="Forward" IsEnabled="False">
+              <PathIcon Width="14" Height="14" Foreground="#333333"
+                        Data="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z"/>
+            </Button>
+            <Button Name="RefreshButton" Grid.Column="3" Classes="nav" Margin="0,0,6,0" ToolTip.Tip="Refresh">
+              <PathIcon Width="14" Height="14" Foreground="#333333"
+                        Data="M17.65,6.35C16.2,4.9 14.21,4 12,4C7.58,4 4.01,7.58 4.01,12C4.01,16.42 7.58,20 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18C8.69,18 6,15.31 6,12C6,8.69 8.69,6 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"/>
+            </Button>
+            <TextBox Name="AddressBox" Grid.Column="4" Margin="0,0,6,0" Padding="8,0" MinHeight="30"
+                     VerticalAlignment="Center" VerticalContentAlignment="Center"
+                     FontSize="16" Foreground="#333333" Background="Transparent" BorderThickness="0"/>
+            <Button Name="ToggleSizeButton" Grid.Column="5" Classes="nav" ToolTip.Tip="Collapse Pinned window">
+              <TextBlock Name="ToggleSizeIcon" Text="−" FontSize="20" Foreground="#444444" VerticalAlignment="Center"/>
+            </Button>
+            <Button Name="CloseButton" Grid.Column="6" Classes="nav" ToolTip.Tip="Close">
+              <PathIcon Width="14" Height="14" Foreground="#666666"
+                        Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/>
+            </Button>
+          </Grid>
+        </Border>
+
+        <Decorator Name="BrowserHost" Grid.Row="1"/>
+
+        <Grid Name="SuggestLayer" Grid.Row="1" ZIndex="4" IsVisible="False">
+          <Border Name="SuggestBackdrop" Background="#01000000"/>
+          <Border HorizontalAlignment="Stretch" VerticalAlignment="Top" Margin="8,6,8,8" MaxHeight="220"
+                  Background="#F9F9F9" BorderBrush="#CCCCCC" BorderThickness="1"
+                  CornerRadius="8" Padding="8" BoxShadow="0 4 10 0 #40000000">
+            <StackPanel>
+              <TextBlock Text="Search suggestions" FontWeight="Bold" FontSize="16" Foreground="#333333" Margin="4,2,4,2"/>
+              <ScrollViewer MaxHeight="168">
+                <StackPanel Name="SuggestList"/>
+              </ScrollViewer>
+            </StackPanel>
+          </Border>
+        </Grid>
+
+        <Border Name="ResizeLeft" Grid.RowSpan="2" ZIndex="2" HorizontalAlignment="Left" Width="6" Cursor="SizeWestEast" Background="Transparent"/>
+        <Border Name="ResizeRight" Grid.RowSpan="2" ZIndex="2" HorizontalAlignment="Right" Width="6" Cursor="SizeWestEast" Background="Transparent"/>
+        <Border Name="ResizeTop" Grid.RowSpan="2" ZIndex="2" VerticalAlignment="Top" Height="6" Cursor="SizeNorthSouth" Background="Transparent"/>
+        <Border Name="ResizeBottom" Grid.RowSpan="2" ZIndex="2" VerticalAlignment="Bottom" Height="6" Cursor="SizeNorthSouth" Background="Transparent"/>
+        <Border Name="ResizeTopLeft" Grid.RowSpan="2" ZIndex="2" HorizontalAlignment="Left" VerticalAlignment="Top" Width="12" Height="12" Cursor="TopLeftCorner" Background="Transparent"/>
+        <Border Name="ResizeTopRight" Grid.RowSpan="2" ZIndex="2" HorizontalAlignment="Right" VerticalAlignment="Top" Width="12" Height="12" Cursor="TopRightCorner" Background="Transparent"/>
+        <Border Name="ResizeBottomLeft" Grid.RowSpan="2" ZIndex="2" HorizontalAlignment="Left" VerticalAlignment="Bottom" Width="12" Height="12" Cursor="BottomLeftCorner" Background="Transparent"/>
+        <Border Name="ResizeBottomRight" Grid.RowSpan="2" ZIndex="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="12" Height="12" Cursor="BottomRightCorner" Background="Transparent"/>
+      </Grid>
+    </Border>
+
+    <Grid Name="MenuLayer" ZIndex="3" IsVisible="False" Background="#01000000">
+      <Border Name="MenuCard" HorizontalAlignment="Left" VerticalAlignment="Top" Width="260"
+              Background="#F9F9F9" BorderBrush="#CCCCCC" BorderThickness="1"
+              CornerRadius="8" Padding="8" BoxShadow="5 4 50 0 #50000000">
+        <StackPanel>
+          <StackPanel Name="ActionList" Spacing="0">
+            <Button Name="CutButton" Classes="ListItem" Content="Cut"/>
+            <Button Name="CopyButton" Classes="ListItem" Content="Copy"/>
+            <Button Name="PasteButton" Classes="ListItem" Content="Paste"/>
+            <Button Name="MuteTabButton" Classes="ListItem" Content="Mute this tab"/>
+            <Button Name="SaveImageButton" Classes="ListItem" Content="Save Image" IsVisible="False"/>
+            <Button Name="OpenDeviceButton" Classes="ListItem" Content="Open in another device"/>
+          </StackPanel>
+          <TextBlock Name="MenuStatus" IsVisible="False" TextWrapping="Wrap" Foreground="#666666" FontSize="13" Margin="4,8,4,2"/>
+          <ScrollViewer Name="ChoiceScroll" IsVisible="False" MaxHeight="220">
+            <StackPanel Name="ChoiceList"/>
+          </ScrollViewer>
+        </StackPanel>
+      </Border>
+    </Grid>
+  </Grid>
+
+  <UserControl.Styles>
+    <Style Selector="Button.nav">
+      <Setter Property="Width" Value="30"/>
+      <Setter Property="Height" Value="30"/>
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="Margin" Value="0,0,2,0"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="CornerRadius" Value="15"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Button.nav:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#E0E0E0"/>
+    </Style>
+    <Style Selector="Button.nav:disabled">
+      <Setter Property="Opacity" Value="0.35"/>
+    </Style>
+
+    <Style Selector="Button.ListItem">
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+      <Setter Property="Height" Value="38"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="Margin" Value="0,4,0,0"/>
+      <Setter Property="Padding" Value="12,0"/>
+      <Setter Property="HorizontalContentAlignment" Value="Left"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Setter Property="FontSize" Value="16"/>
+      <Setter Property="FontWeight" Value="Medium"/>
+      <Setter Property="Foreground" Value="#333333"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Button.ListItem:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#F0F0F0"/>
+    </Style>
+  </UserControl.Styles>
+</UserControl>

@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "NexZen Test MV3 Extension",
+  "version": "1.2",
+  "description": "POC to test CEF 152 OSR extension capabilities",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>",
+    "http://127.0.0.1:32001/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Test Popup"
+  }
+}

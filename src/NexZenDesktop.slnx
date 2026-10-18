@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="NexZen.Application/NexZen.Application.csproj" />
+  <Project Path="NexZen.Core/NexZen.Core.csproj" />
+  <Project Path="NexZen.Desktop/NexZen.Desktop.csproj" />
+  <Project Path="NexZen.Infrastructure/NexZen.Infrastructure.csproj" />
+  <Project Path="NexZen.Tests/NexZen.Tests.csproj" />
+</Solution>

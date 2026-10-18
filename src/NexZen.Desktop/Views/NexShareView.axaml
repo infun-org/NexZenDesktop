@@ -1,0 +1,332 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NexZen.Application.ViewModels"
+             x:Class="NexZen.Desktop.Views.NexShareView"
+             x:DataType="vm:NexShareViewModel"
+             Name="RootControl">
+  <UserControl.Styles>
+    <Style Selector="Button.Pill">
+      <Setter Property="CornerRadius" Value="12"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/>
+      <Setter Property="Padding" Value="12,10"/>
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Button.BluePill">
+      <Setter Property="Background" Value="#BFE4F6"/>
+      <Setter Property="Foreground" Value="#1F3A4D"/>
+    </Style>
+    <Style Selector="Button.BluePill:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#A9D7EE"/>
+    </Style>
+    <Style Selector="Button.GreenPill">
+      <Setter Property="Background" Value="#C4F0D0"/>
+      <Setter Property="Foreground" Value="#1F4A2C"/>
+    </Style>
+    <Style Selector="Button.GreenPill:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#AFE6BE"/>
+    </Style>
+    <Style Selector="Button.SendPill">
+      <Setter Property="Background" Value="#F3C7BC"/>
+      <Setter Property="Foreground" Value="#5A2E26"/>
+      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="Padding" Value="18,8"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Button.SendPill:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#EBB3A6"/>
+    </Style>
+    <Style Selector="Button.SavePill">
+      <Setter Property="Background" Value="#F7F7F7"/>
+      <Setter Property="Foreground" Value="#333333"/>
+      <Setter Property="BorderBrush" Value="#D0D0D0"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="Padding" Value="16,8"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="TextBox.Soft">
+      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="Padding" Value="12,8"/>
+      <Setter Property="Background" Value="#FFFFFF"/>
+      <Setter Property="BorderBrush" Value="#D8D8D8"/>
+      <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+    <Style Selector="ListBoxItem">
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="Margin" Value="0"/>
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="ListBoxItem:pointerover">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="ListBoxItem:selected">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="ToggleSwitch.Tiny">
+      <Setter Property="OnContent" Value="{x:Null}"/>
+      <Setter Property="OffContent" Value="{x:Null}"/>
+      <Setter Property="MinWidth" Value="0"/>
+      <Setter Property="Width" Value="44"/>
+      <Setter Property="Height" Value="24"/>
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="Margin" Value="10,0,0,0"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Width="42" Height="24" CornerRadius="12" Background="#D5D5D5"
+                  Name="SwitchArea">
+            <Canvas Name="PART_SwitchKnob" Width="42" Height="24" HorizontalAlignment="Left" VerticalAlignment="Center">
+              <Grid Name="PART_MovingKnobs" Width="18" Height="18" Canvas.Left="3" Canvas.Top="3">
+                <Ellipse Name="SwitchKnobOff" Width="18" Height="18" Fill="White"/>
+                <Ellipse Name="SwitchKnobOn" Width="18" Height="18" Fill="White" Opacity="0"/>
+              </Grid>
+            </Canvas>
+          </Border>
+        </ControlTemplate>
+      </Setter>
+    </Style>
+    <Style Selector="ToggleSwitch.Tiny:checked /template/ Border#SwitchArea">
+      <Setter Property="Background" Value="#43A047"/>
+    </Style>
+  </UserControl.Styles>
+
+  <Border CornerRadius="16" BorderBrush="#D8D8D8" BorderThickness="1" Margin="8" Background="#F3F3F3" ClipToBounds="True">
+    <Border.Effect>
+      <DropShadowDirectionEffect ShadowDepth="2" BlurRadius="10" Color="#18000000" />
+    </Border.Effect>
+
+    <Grid ColumnDefinitions="240,*,390" RowDefinitions="Auto,*" Margin="16">
+
+      <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,12">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel>
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="NexShare" FontSize="26" FontWeight="Bold" Foreground="#2A2A2A" VerticalAlignment="Center"/>
+              <ToggleSwitch Classes="Tiny" IsChecked="{Binding IsActive}"/>
+            </StackPanel>
+            <TextBlock Text="{Binding ConnectionStatus}" Foreground="#8A8A8A" FontSize="13" FontStyle="Italic" Margin="0,2,0,0"/>
+          </StackPanel>
+          <Button Grid.Column="1" Classes="Pill BluePill" Content="3D" Padding="16,8" HorizontalAlignment="Right"
+                  VerticalAlignment="Center" Click="OpenCompanion_Click" ToolTip.Tip="Edit 3D lighting"/>
+        </Grid>
+      </StackPanel>
+
+      <!-- Left column -->
+      <Grid Grid.Row="1" Grid.Column="0" RowDefinitions="*,Auto" Margin="0,0,12,0">
+        <Border Grid.Row="0" Background="#FFFFFF" CornerRadius="14" Padding="12" BorderBrush="#E4E4E4" BorderThickness="1" Margin="0,0,0,12">
+          <Grid RowDefinitions="Auto,Auto,Auto,*">
+            <Button Grid.Row="0" Classes="Pill BluePill" Content="Fix Firewall" Margin="0,0,0,8"
+                    Command="{Binding ConfigureFirewallCommand}"/>
+            <Button Grid.Row="1" Classes="Pill GreenPill" Content="Reset Connect" Margin="0,0,0,12"
+                    Command="{Binding RefreshCommand}"
+                    ToolTip.Tip="Send a refresh to the connected device, drop all connections, and scan again"/>
+            <TextBlock Grid.Row="2" Text="Discovered devices" FontSize="15" Foreground="#4A4A4A"
+                       HorizontalAlignment="Center" Margin="0,0,0,10"/>
+            <ListBox Grid.Row="3" ItemsSource="{Binding DiscoveredDevices}" Background="Transparent" BorderThickness="0"
+                     Padding="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:DiscoveredDeviceItem">
+                  <Border CornerRadius="12" Padding="10,8" Background="#E9E9E9" Margin="0,0,0,8">
+                    <Grid ColumnDefinitions="*,Auto,Auto">
+                      <TextBlock Grid.Column="0" Text="{Binding DeviceName}" FontWeight="SemiBold" Foreground="#333"
+                                 VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" Margin="8,0,0,0">
+                        <Border IsVisible="{Binding HasLan}" Background="#43A047" CornerRadius="8" Padding="7,2">
+                          <TextBlock Text="LAN" FontSize="10" FontWeight="Bold" Foreground="White"/>
+                        </Border>
+                        <Border IsVisible="{Binding HasBle}" Background="#1E88E5" CornerRadius="8" Padding="7,2">
+                          <TextBlock Text="BLE" FontSize="10" FontWeight="Bold" Foreground="White"/>
+                        </Border>
+                      </StackPanel>
+                      <Button Grid.Column="2" Width="28" Height="28" Padding="0" CornerRadius="14" Background="Transparent"
+                              BorderThickness="0" Cursor="Hand" Margin="6,0,0,0"
+                              IsVisible="{Binding !IsConnected}" ToolTip.Tip="Connect"
+                              Command="{ReflectionBinding #RootControl.DataContext.ConnectDeviceCommand}" CommandParameter="{Binding}">
+                        <PathIcon Width="16" Height="16" Foreground="#5B5B5B"
+                                  Data="M3.9,12C3.9,10.29 5.29,8.9 7,8.9H11V7H7A5,5 0 0,0 2,12A5,5 0 0,0 7,17H11V15.1H7C5.29,15.1 3.9,13.71 3.9,12M8,13H16V11H8V13M17,7H13V8.9H17C18.71,8.9 20.1,10.29 20.1,12C20.1,13.71 18.71,15.1 17,15.1H13V17H17A5,5 0 0,0 22,12A5,5 0 0,0 17,7Z"/>
+                      </Button>
+                      <Button Grid.Column="2" Width="28" Height="28" Padding="0" CornerRadius="14" Background="Transparent"
+                              BorderThickness="0" Cursor="Hand" Margin="6,0,0,0"
+                              IsVisible="{Binding IsConnected}" ToolTip.Tip="Disconnect"
+                              Command="{ReflectionBinding #RootControl.DataContext.DisconnectDeviceCommand}" CommandParameter="{Binding}">
+                        <PathIcon Width="16" Height="16" Foreground="#2E7D32"
+                                  Data="M3.9,12C3.9,10.29 5.29,8.9 7,8.9H11V7H7A5,5 0 0,0 2,12A5,5 0 0,0 7,17H11V15.1H7C5.29,15.1 3.9,13.71 3.9,12M8,13H16V11H8V13M17,7H13V8.9H17C18.71,8.9 20.1,10.29 20.1,12C20.1,13.71 18.71,15.1 17,15.1H13V17H17A5,5 0 0,0 22,12A5,5 0 0,0 17,7Z"/>
+                      </Button>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Grid>
+        </Border>
+
+        <StackPanel Grid.Row="1">
+          <TextBlock Text="Upload file" FontSize="15" Foreground="#4A4A4A" Margin="0,0,0,8"/>
+          <Border Background="#FFFFFF" CornerRadius="14" Padding="12" BorderBrush="#E4E4E4" BorderThickness="1" MinHeight="150">
+            <Grid RowDefinitions="*,Auto">
+              <ListBox Grid.Row="0" ItemsSource="{Binding UploadItems}" Background="Transparent" BorderThickness="0" Padding="0">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="x:String">
+                    <TextBlock Text="{Binding}" Foreground="#333" Margin="0,2" TextTrimming="CharacterEllipsis"/>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              <Button Grid.Row="1" Classes="Pill BluePill" Content="Offer file" Margin="0,10,0,0" Click="OfferFile_Click"/>
+            </Grid>
+          </Border>
+        </StackPanel>
+      </Grid>
+
+      <!-- Center column -->
+      <Grid Grid.Row="1" Grid.Column="1" RowDefinitions="Auto,Auto,*,Auto">
+        <StackPanel Grid.Row="0" Margin="0,0,0,10">
+          <TextBlock Text="Device name" FontSize="15" Foreground="#4A4A4A"/>
+          <TextBlock Text="Other computers see this name in device list" Foreground="#8A8A8A" FontSize="12" Margin="0,2,0,8"/>
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBox Grid.Column="0" Classes="Soft" Text="{Binding DeviceLabel}" PlaceholderText="" MaxLength="40"
+                     KeyDown="DeviceLabel_KeyDown"/>
+            <Button Grid.Column="1" Classes="Pill BluePill" Content="Save" Padding="16,8" Margin="8,0,0,0"
+                    Command="{Binding SaveDeviceLabelCommand}"/>
+          </Grid>
+        </StackPanel>
+
+        <Border Grid.Row="1" IsVisible="{Binding HasUrlOffers}" Background="#FFFFFF" CornerRadius="12" Padding="10"
+                BorderBrush="#E4E4E4" BorderThickness="1" Margin="0,0,0,8">
+          <StackPanel>
+            <TextBlock Text="Shared links" FontWeight="SemiBold" Margin="0,0,0,6"/>
+            <ItemsControl ItemsSource="{Binding UrlOffers}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:UrlOfferItem">
+                  <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,4">
+                    <TextBlock Grid.Column="0" Text="{Binding Title}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" Content="Open" Classes="GreenPill Pill" Padding="10,4" Margin="6,0"
+                            Command="{ReflectionBinding #RootControl.DataContext.AcceptUrlCommand}" CommandParameter="{Binding}"/>
+                    <Button Grid.Column="2" Content="Dismiss" Classes="SavePill" Padding="10,4"
+                            Command="{ReflectionBinding #RootControl.DataContext.DeclineUrlCommand}" CommandParameter="{Binding}"/>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="2" RowDefinitions="Auto,*">
+          <TextBlock Grid.Row="0" Text="Message" FontSize="15" Foreground="#4A4A4A" Margin="0,0,0,8"/>
+          <Border Grid.Row="1" Background="#FFFFFF" CornerRadius="14" BorderBrush="#E4E4E4" BorderThickness="1" Padding="8">
+            <Grid RowDefinitions="*,Auto">
+              <Grid Grid.Row="0">
+                <ListBox x:Name="ChatList" ItemsSource="{Binding ChatMessages}" Background="Transparent" BorderThickness="0"
+                         Padding="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ChatMessageItem">
+                      <Grid>
+                        <Border CornerRadius="12" Padding="12,8" Background="{Binding BubbleColor}" Margin="0,4"
+                                HorizontalAlignment="{Binding Alignment}" MaxWidth="280">
+                          <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Foreground="{Binding TextColor}"/>
+                        </Border>
+                      </Grid>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+                <Button x:Name="ChatNewMessagesButton" IsVisible="False" HorizontalAlignment="Center" VerticalAlignment="Top"
+                        Margin="0,4" Padding="12,5" CornerRadius="14" ZIndex="2" Cursor="Hand"
+                        Background="#F7FFFFFF" Foreground="#007AFF" BorderBrush="#66007AFF" BorderThickness="1"
+                        FontSize="12" FontWeight="SemiBold" Click="ChatNewMessagesButton_Click"/>
+              </Grid>
+              <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,8,0,0">
+                <TextBox Grid.Column="0" Classes="Soft" Text="{Binding MessageInput, UpdateSourceTrigger=PropertyChanged}"
+                         PlaceholderText="Type new message..." KeyDown="MessageInput_KeyDown"/>
+                <Button Grid.Column="1" Classes="SendPill" Content="Send" Margin="8,0,0,0" Command="{Binding SendMessageCommand}"/>
+              </Grid>
+            </Grid>
+          </Border>
+        </Grid>
+
+        <StackPanel Grid.Row="3" Margin="0,12,0,0">
+          <TextBlock Text="File received" FontSize="15" Foreground="#4A4A4A" Margin="0,0,0,8"/>
+          <Border Background="#FFFFFF" CornerRadius="14" BorderBrush="#E4E4E4" BorderThickness="1" Padding="10" MinHeight="120">
+            <ItemsControl ItemsSource="{Binding DownloadItems}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <WrapPanel Orientation="Horizontal"/>
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:FileOfferItem">
+                  <StackPanel Width="92" Margin="0,0,10,4">
+                    <Border Height="86" CornerRadius="8" Background="#EEE" ClipToBounds="True" Margin="0,0,0,6">
+                      <Panel>
+                        <PathIcon Width="28" Height="28" Foreground="#9A9A9A" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                  IsVisible="{Binding IsImage}"
+                                  Data="M4,4H20A2,2 0 0,1 22,6V18A2,2 0 0,1 20,20H4A2,2 0 0,1 2,18V6A2,2 0 0,1 4,4M4,6V18H20V6H4M7.5,7A1.5,1.5 0 0,1 9,8.5A1.5,1.5 0 0,1 7.5,10A1.5,1.5 0 0,1 6,8.5A1.5,1.5 0 0,1 7.5,7M5,17L8.5,12.5L11,15.5L13.5,12.5L19,17H5Z"/>
+                        <TextBlock Text="{Binding FileName}" FontSize="11" Foreground="#666" TextWrapping="Wrap"
+                                   HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="6" TextAlignment="Center"/>
+                      </Panel>
+                    </Border>
+                    <Button Classes="GreenPill Pill" Content="Download" Padding="8,4" FontSize="12"
+                            Command="{ReflectionBinding #RootControl.DataContext.AcceptFileCommand}"
+                            CommandParameter="{Binding}"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </Border>
+        </StackPanel>
+      </Grid>
+
+      <Border x:Name="CompanionHost" Grid.Row="0" Grid.Column="2" Grid.RowSpan="2"
+              Background="Transparent" ClipToBounds="True" Margin="4,0,0,0"/>
+
+      <!-- BLE pairing -->
+      <Border Grid.RowSpan="2" Grid.ColumnSpan="3" IsVisible="{Binding IsSasOpen}" Background="#B3000000" ZIndex="30" Padding="24">
+        <Border Background="White" CornerRadius="12" Padding="20" MinWidth="320" HorizontalAlignment="Center" VerticalAlignment="Center">
+          <StackPanel Spacing="10">
+            <TextBlock Text="Security code" FontSize="18" FontWeight="SemiBold" Foreground="#222222"/>
+            <TextBlock Text="{Binding SasPeerText}" Foreground="#555555" TextWrapping="Wrap" MaxWidth="360"/>
+            <TextBlock Text="{Binding SasCodeText}" FontSize="38" FontWeight="Bold" Foreground="#007AFF" HorizontalAlignment="Center" Margin="0,6"/>
+            <TextBlock Text="{Binding SasSecondsLeft, StringFormat='Time left: {0} s'}" Foreground="#777777" HorizontalAlignment="Center"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,8,0,0">
+              <Button Content="Reject" Padding="16,8" CornerRadius="8" Background="Transparent" Foreground="#E53935"
+                      BorderBrush="#E53935" BorderThickness="1" Cursor="Hand" Command="{Binding RejectSasCommand}"/>
+              <Button Content="Confirm" Padding="16,8" CornerRadius="8" Background="#007AFF" Foreground="White"
+                      BorderThickness="0" Cursor="Hand" Command="{Binding ConfirmSasCommand}"/>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+      </Border>
+
+      <Border Grid.RowSpan="2" Grid.ColumnSpan="3" IsVisible="{Binding IsPeerPickerOpen}" Background="#B3000000" ZIndex="20" Padding="24">
+        <Border Background="#F4F4F4" CornerRadius="12" Padding="16" MaxWidth="360" HorizontalAlignment="Center" VerticalAlignment="Center">
+          <Grid RowDefinitions="Auto,Auto,Auto">
+            <TextBlock Grid.Row="0" Text="Choose a device" FontWeight="Bold" FontSize="16" Foreground="#333333" Margin="0,0,0,10"/>
+            <ScrollViewer Grid.Row="1" MaxHeight="240">
+              <ItemsControl ItemsSource="{Binding PeerChoices}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:PeerChoiceItem">
+                    <Button Content="{Binding Name}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                            Margin="0,4" Padding="12,8" CornerRadius="8" Background="#E6FFFFFF" Foreground="#333333"
+                            BorderBrush="#48000000" BorderThickness="1" Cursor="Hand"
+                            Command="{ReflectionBinding #RootControl.DataContext.ChoosePeerCommand}"
+                            CommandParameter="{Binding}"/>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+            <Button Grid.Row="2" Content="Cancel" HorizontalAlignment="Right" Margin="0,12,0,0"
+                    Padding="14,6" CornerRadius="8" Background="Transparent" Foreground="#333333"
+                    BorderBrush="#48000000" BorderThickness="1" Cursor="Hand"
+                    Command="{Binding CancelPeerPickCommand}"/>
+          </Grid>
+        </Border>
+      </Border>
+    </Grid>
+  </Border>
+</UserControl>

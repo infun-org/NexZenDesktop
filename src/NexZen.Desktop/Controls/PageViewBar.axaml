@@ -1,0 +1,46 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="NexZen.Desktop.Controls.PageViewBar"
+             Height="64"
+             HorizontalAlignment="Stretch"
+             VerticalAlignment="Top">
+    <Border Background="#F7F7F7"
+            BorderBrush="#D0D0D0"
+            BorderThickness="0,0,0,1"
+            Padding="52,8,12,8"
+            BoxShadow="0 2 8 0 #20000000">
+        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <TextBlock Text="Page view"
+                           FontWeight="Bold"
+                           FontSize="14"
+                           Foreground="#333333"
+                           VerticalAlignment="Center" />
+                <ComboBox Name="PresetBox" Width="140" VerticalAlignment="Center" />
+                <TextBlock Text="W" Foreground="#666666" VerticalAlignment="Center" />
+                <TextBox Name="WidthBox" Width="72" Padding="6,4" VerticalAlignment="Center" />
+                <TextBlock Text="H" Foreground="#666666" VerticalAlignment="Center" />
+                <TextBox Name="HeightBox" Width="72" Padding="6,4" VerticalAlignment="Center" />
+                <Button Name="RotateButton"
+                        Content="Rotate"
+                        Padding="10,4"
+                        VerticalAlignment="Center"
+                        ToolTip.Tip="Swap width and height" />
+                <TextBlock Text="Scale" Foreground="#666666" VerticalAlignment="Center" />
+                <ComboBox Name="ScaleBox" Width="88" VerticalAlignment="Center" />
+                <CheckBox Name="MobileBox"
+                          Content="Mobile"
+                          VerticalAlignment="Center"
+                          ToolTip.Tip="Load the mobile page and use a mobile viewport" />
+                <TextBlock Name="ShowingLabel"
+                           Text="Full window"
+                           Foreground="#666666"
+                           FontSize="12"
+                           VerticalAlignment="Center"
+                           Margin="4,0,0,0" />
+                <Button Name="ResetButton" Content="Reset" Padding="10,4" VerticalAlignment="Center" ToolTip.Tip="Use the full window" />
+                <Button Name="HideButton" Content="Hide" Padding="10,4" VerticalAlignment="Center" ToolTip.Tip="Hide this bar. The page keeps this view." />
+            </StackPanel>
+        </ScrollViewer>
+    </Border>
+</UserControl>

@@ -1,0 +1,151 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NexZen.Application.ViewModels"
+             xmlns:local="using:NexZen.Desktop.Controls"
+             x:Class="NexZen.Desktop.Controls.TabManagerControl"
+             x:DataType="vm:MainViewModel"
+             Width="{Binding TabManagerWidth}">
+    <UserControl.Resources>
+        <local:TabBackgroundConverter x:Key="TabBackgroundConverter" />
+    </UserControl.Resources>
+
+    <UserControl.Styles>
+        <Style Selector="ToggleButton.IconBtn">
+            <Setter Property="Width" Value="36" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Background" Value="#F5F5F5" />
+            <Setter Property="BorderBrush" Value="#D0D0D0" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Margin" Value="2" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="ToggleButton.IconBtn:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#E0E0E0" />
+        </Style>
+        
+        <Style Selector="Button.ListItem">
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Background" Value="#FFFFFF" />
+            <Setter Property="BorderBrush" Value="#D0D0D0" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Margin" Value="0,4,0,0" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Foreground" Value="#333333" />
+        </Style>
+        <Style Selector="Button.ListItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#F0F0F0" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*">
+        <!-- Background Layer -->
+        <Border Grid.Row="0" Grid.RowSpan="2">
+            <Border.Background>
+                <MultiBinding Converter="{StaticResource TabBackgroundConverter}">
+                    <Binding Path="TabBackgroundColor" />
+                    <Binding Path="TabBackgroundImagePath" />
+                </MultiBinding>
+            </Border.Background>
+        </Border>
+
+        <!-- Top Toolbar for Background and Settings -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="12,12,12,0" HorizontalAlignment="Right">
+            <ToggleButton Name="BgToggle" Classes="IconBtn" ToolTip.Tip="Wallpaper settings">
+                <Path Data="M17.5,12A1.5,1.5 0 0,1 16,10.5A1.5,1.5 0 0,1 17.5,9A1.5,1.5 0 0,1 19,10.5A1.5,1.5 0 0,1 17.5,12M14.5,8A1.5,1.5 0 0,1 13,6.5A1.5,1.5 0 0,1 14.5,5A1.5,1.5 0 0,1 16,6.5A1.5,1.5 0 0,1 14.5,8M9.5,8A1.5,1.5 0 0,1 8,6.5A1.5,1.5 0 0,1 9.5,5A1.5,1.5 0 0,1 11,6.5A1.5,1.5 0 0,1 9.5,8M6.5,12A1.5,1.5 0 0,1 5,10.5A1.5,1.5 0 0,1 6.5,9A1.5,1.5 0 0,1 8,10.5A1.5,1.5 0 0,1 6.5,12M12,3A9,9 0 0,0 3,12A9,9 0 0,0 12,21A1.5,1.5 0 0,0 13.5,19.5C13.5,19.11 13.35,18.76 13.11,18.47C12.88,18.18 12.7,17.8 12.7,17.4A1.6,1.6 0 0,1 14.3,15.8H16A5,5 0 0,0 21,10.8A7.8,7.8 0 0,0 12,3Z" 
+                      Fill="#333333" Stretch="Uniform" Width="18" Height="18" />
+            </ToggleButton>
+            <Popup IsOpen="{Binding #BgToggle.IsChecked, Mode=TwoWay}" PlacementTarget="{Binding #BgToggle}" Placement="Bottom" IsLightDismissEnabled="True">
+                <Border Background="#F9F9F9" BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="8" BoxShadow="0 4 10 0 #40000000" Padding="8" Margin="8">
+                    <TabControl Width="350" Height="300">
+                        <TabItem Header="Colors">
+                            <ColorView ColorChanged="ColorPicker_ColorChanged" />
+                        </TabItem>
+                        <TabItem Header="Images">
+                            <StackPanel Spacing="10" VerticalAlignment="Center" HorizontalAlignment="Center" Width="200">
+                                <Button Classes="ListItem" Content="Upload image" Click="UploadImage_Click" />
+                                <Button Classes="ListItem" Content="Remove image" Click="RemoveImage_Click" />
+                            </StackPanel>
+                        </TabItem>
+                    </TabControl>
+                </Border>
+            </Popup>
+
+            <ToggleButton Name="SettingsToggle" Classes="IconBtn" ToolTip.Tip="Display settings">
+                <Path Data="M3,11H11V3H3M3,21H11V13H3M13,21H21V13H13M13,3V11H21V3Z" 
+                      Fill="#333333" Stretch="Uniform" Width="16" Height="16" />
+            </ToggleButton>
+            <Popup IsOpen="{Binding #SettingsToggle.IsChecked, Mode=TwoWay}" PlacementTarget="{Binding #SettingsToggle}" Placement="Bottom" IsLightDismissEnabled="True">
+                <Border Background="#F9F9F9" BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="8" BoxShadow="0 4 10 0 #40000000" Padding="8" Margin="8">
+                    <StackPanel Spacing="4" Width="120">
+                        <Button Classes="ListItem" Content="Auto" Command="{Binding SetTabColumnsCommand}" CommandParameter="0" />
+                        <Button Classes="ListItem" Content="1 column" Command="{Binding SetTabColumnsCommand}" CommandParameter="1" />
+                        <Button Classes="ListItem" Content="2 columns" Command="{Binding SetTabColumnsCommand}" CommandParameter="2" />
+                        <Button Classes="ListItem" Content="3 columns" Command="{Binding SetTabColumnsCommand}" CommandParameter="3" />
+                    </StackPanel>
+                </Border>
+            </Popup>
+        </StackPanel>
+
+        <!-- Tabs Content -->
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="12">
+            <ItemsControl ItemsSource="{Binding Tabs}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal" ItemWidth="250" ItemHeight="270" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Panel>
+                                <!-- Inactive Border -->
+                                <Border Width="240" Height="260" CornerRadius="12" Background="White"
+                                        BorderBrush="#D0D0D0" BorderThickness="2"
+                                        IsVisible="{Binding !IsActive}">
+                                </Border>
+                                
+                                <!-- Active Border -->
+                                <Border Width="240" Height="260" CornerRadius="12" Background="White"
+                                        BorderBrush="#4CAF50" BorderThickness="2"
+                                        IsVisible="{Binding IsActive}"
+                                        BoxShadow="0 4 10 0 #334CAF50">
+                                </Border>
+                                
+                                <!-- Content -->
+                                <Border Width="240" Height="260" CornerRadius="10" ClipToBounds="True">
+                                    <Button Click="SwitchTab_Click" Tag="{Binding Id}" Padding="0" Background="Transparent" BorderThickness="0" CornerRadius="10" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                                        <Grid RowDefinitions="*,Auto">
+                                            <!-- Thumbnail -->
+                                            <Image Source="{Binding ThumbnailSource}" Stretch="UniformToFill" Grid.Row="0" />
+                                            
+                                            <!-- Close Button -->
+                                            <Button Click="CloseTab_Click" Tag="{Binding Id}" Grid.Row="0" 
+                                                    HorizontalAlignment="Right" VerticalAlignment="Top" 
+                                                    Width="24" Height="24" CornerRadius="12" Padding="0" 
+                                                    Margin="4" Background="#80000000" Foreground="White" 
+                                                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+                                                <TextBlock Text="✕" FontSize="12" Margin="0,0,0,1"/>
+                                            </Button>
+
+                                            <!-- Title Bar -->
+                                            <Border Grid.Row="1" Background="#FFFFFF" Padding="8,6">
+                                                <TextBlock Text="{Binding Title}" FontSize="14"
+                                                           Foreground="#333333" FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                            </Border>
+                                        </Grid>
+                                    </Button>
+                                </Border>
+                            </Panel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</UserControl>
