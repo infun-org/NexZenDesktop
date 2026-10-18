@@ -14,6 +14,7 @@ class Program
     public static int Main(string[] args)
     {
         StartupLog.Open();
+        StartupTimer.Mark("Main");
         AppDomain.CurrentDomain.UnhandledException += (_, e) =>
         {
             StartupLog.Fail(e.ExceptionObject as Exception
@@ -64,6 +65,7 @@ class Program
         StartupLog.Write("CefRuntime.Load");
         CefRuntime.Load();
         StartupLog.Write("CefRuntime.Load done");
+        StartupTimer.Mark("CEF loaded");
         
         var argsWithExe = new string[args.Length + 1];
         argsWithExe[0] = "NexZen.Desktop";
@@ -106,6 +108,7 @@ class Program
             {
                 if (ext.IsRunning && !string.IsNullOrEmpty(ext.Directory) && System.IO.Directory.Exists(ext.Directory))
                 {
+                    TrimExtensionRulesets(ext.Directory);
                     extensionPaths.Add(ext.Directory);
                 }
             }
@@ -161,8 +164,10 @@ class Program
                     SchemeHandlerFactory = new NexZen.Desktop.Handlers.NewTabSchemeHandlerFactory(newTabRoot)
                 }
             };
+            StartupTimer.Mark("CEF initialize");
             Xilium.CefGlue.Common.CefRuntimeLoader.Initialize(cefSettings, cefSettingsArgs.ToArray(), customSchemes);
             StartupLog.Write("CEF initialized, starting Avalonia");
+            StartupTimer.Mark("Avalonia start");
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
             StartupLog.Write("Avalonia exited");
             return 0;
@@ -234,6 +239,24 @@ class Program
         static extern int MessageBoxW(IntPtr hWnd, string text, string caption, uint type);
     }
 
+    // Disabled ad-block rulesets would be re-indexed by Chromium on every start (~6 s for
+    // Adblock Plus). NEXZEN_EXT_ALL_RULESETS=1 puts the full manifests back.
+    static void TrimExtensionRulesets(string directory)
+    {
+        try
+        {
+            var restore = Environment.GetEnvironmentVariable("NEXZEN_EXT_ALL_RULESETS") == "1";
+            var result = NexZen.Infrastructure.Services.ExtensionRulesetTrimmer.Apply(directory, restore);
+            if (result != NexZen.Infrastructure.Services.ExtensionRulesetTrimmer.Result.Unchanged)
+                StartupLog.Write($"extension rulesets {result.ToString().ToLowerInvariant()}: {directory}");
+        }
+        catch (Exception ex)
+        {
+            // A broken manifest must not stop the browser; load the extension as it is.
+            StartupLog.Write($"extension ruleset trim failed for {directory}: {ex.Message}");
+        }
+    }
+
     // Native Wayland is opt-in only. NEXZEN_FORCE_X11=1 still forces X11.
     static bool UseNativeWayland() =>
         !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("WAYLAND_DISPLAY"))
@@ -252,8 +275,10 @@ class Program
                 .LogToTrace();
         }
 
+        // WmClass ties the window to nexzen-desktop.desktop (StartupWMClass=NexZen) in the
+        // taskbar and app menu; the default is the executable name, "NexZen.Desktop".
         return builder.UsePlatformDetect()
-            .With(new X11PlatformOptions { EnableIme = true })
+            .With(new X11PlatformOptions { EnableIme = true, WmClass = "NexZen" })
             .WithInterFont()
             .LogToTrace();
     }

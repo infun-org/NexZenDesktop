@@ -30,6 +30,7 @@ public partial class App : Avalonia.Application
 
     public override void Initialize()
     {
+        StartupTimer.Mark("App XAML load");
         AvaloniaXamlLoader.Load(this);
     }
 
@@ -204,6 +205,7 @@ public partial class App : Avalonia.Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        StartupTimer.Mark("Avalonia framework ready");
         var services = new ServiceCollection();
 
         // 1. Database
@@ -258,6 +260,7 @@ public partial class App : Avalonia.Application
         ServiceProvider = services.BuildServiceProvider();
         var nexShareVm = ServiceProvider.GetRequiredService<NexZen.Application.ViewModels.NexShareViewModel>();
         nexShareVm.UiInvoker = action => Avalonia.Threading.Dispatcher.UIThread.Post(action);
+        StartupTimer.Mark("services built (NexShare view model resolved)");
 
         // Ensure database is created (Migration)
         var dbContext = ServiceProvider.GetRequiredService<NexZenDbContext>();
@@ -288,9 +291,11 @@ public partial class App : Avalonia.Application
                 ON ""SavedPasswords"" (""Origin"", ""Username"");");
         }
         catch { }
+        StartupTimer.Mark("database ready");
 
         // Update Tray Icon when NexShare status changes
         var orchestrator = ServiceProvider.GetRequiredService<INexShareOrchestrator>();
+        StartupTimer.Mark("NexShare orchestrator resolved");
         orchestrator.OnConnectionStatusChanged += (s, e) =>
         {
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
@@ -344,7 +349,9 @@ public partial class App : Avalonia.Application
             {
                 try { System.Threading.Tasks.Task.Run(() => orchestrator.StopAsync()).Wait(3000); } catch { }
             };
+            StartupTimer.Mark("MainWindow create");
             desktop.MainWindow = new MainWindow();
+            StartupTimer.Mark("MainWindow created");
         }
 
         base.OnFrameworkInitializationCompleted();

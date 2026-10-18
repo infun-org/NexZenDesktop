@@ -122,7 +122,14 @@ public partial class MainWindow : Window
     private MainWindow(MainViewModel? viewModel, string? initialUrl, bool isIndependentWindow)
     {
         _isIndependentWindow = isIndependentWindow;
+        if (!isIndependentWindow)
+            StartupTimer.MarkOnce("MainWindow XAML load");
         InitializeComponent();
+        if (!isIndependentWindow)
+        {
+            StartupTimer.MarkOnce("MainWindow XAML loaded");
+            Opened += (_, _) => StartupTimer.MarkOnce("MainWindow opened (visible)");
+        }
         _passwordCapturePollTimer.Tick += async (_, _) => await PollPasswordCaptureQueuesAsync();
         _passwordCapturePollTimer.Start();
         Closed += (_, _) => _passwordCapturePollTimer.Stop();
@@ -140,6 +147,8 @@ public partial class MainWindow : Window
         }
         
         _viewModel = viewModel ?? App.ServiceProvider?.GetRequiredService<MainViewModel>();
+        if (!_isIndependentWindow)
+            StartupTimer.MarkOnce("MainViewModel resolved");
         if (_viewModel != null)
             _viewModel.PropertyChanged += (_, e) =>
             {
@@ -152,6 +161,7 @@ public partial class MainWindow : Window
         {
             _extensionBridge = new NexZenExtensionBridge(_viewModel);
             _extensionBridge.Start();
+            StartupTimer.MarkOnce("extension bridge started");
             
             this.Closed += (s, e) => _extensionBridge.Stop();
         }
@@ -503,7 +513,11 @@ public partial class MainWindow : Window
         AddHandler(KeyDownEvent, OnEditKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
 
         // Create initial tab
+        if (!_isIndependentWindow)
+            StartupTimer.MarkOnce("first tab add");
         _viewModel?.AddTab(initialUrl ?? "https://google.com");
+        if (!_isIndependentWindow)
+            StartupTimer.MarkOnce("MainWindow constructor done");
     }
 
     public bool ForceClose { get; set; } = false;
@@ -1023,10 +1037,17 @@ public partial class MainWindow : Window
         if (state.Browser != null)
             return;
 
+        StartupTimer.MarkOnce("first tab browser create");
         var browser = new AvaloniaCefBrowser { Address = BlankPage.ForBrowser(tab.Url) };
         WebAudioDecodeShim.Attach(browser);
         _findUi.Attach(browser);
         state.Browser = browser;
+        browser.BrowserInitialized += () => StartupTimer.MarkOnce("first tab browser initialized (CEF)");
+        browser.LoadStart += (_, e) =>
+        {
+            if (e.Frame.IsMain)
+                StartupTimer.MarkOnce("first page load start");
+        };
         browser.BrowserInitialized += () => { _ = ApproximateGeolocation.PublishAsync(() => browser.GetBrowserHost()); };
         browser.BrowserInitialized += () =>
         {
@@ -1194,6 +1215,8 @@ public partial class MainWindow : Window
         };
         browser.LoadEnd += (s, e) =>
         {
+            if (e.Frame.IsMain)
+                StartupTimer.MarkOnce("first page load end");
             var url = e.Frame.Url ?? "";
             if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
                 || url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
@@ -1307,6 +1330,7 @@ public partial class MainWindow : Window
             // Insert at index 0 so it's behind the UI overlay
             grid.Children.Insert(0, browser);
         }
+        StartupTimer.MarkOnce("first tab browser attached");
     }
 
     private void OnTabSwitcherKeyDown(object? sender, KeyEventArgs e)
