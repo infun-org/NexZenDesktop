@@ -231,7 +231,7 @@ public partial class IncognitoWindow : Window
             return;
         }
 
-        if (e.Key == Key.I && MainWindow.IsAiFunctionChord(mods))
+        if (e.Key == Key.I && MainWindow.IsCtrlOrCmdShiftChord(mods))
         {
             e.Handled = true;
             if (Avalonia.Application.Current is NexZen.Desktop.App app)

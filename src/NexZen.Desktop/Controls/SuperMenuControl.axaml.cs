@@ -29,6 +29,7 @@ public partial class SuperMenuControl : UserControl
     public event EventHandler? BackHistoryRequested;
     public event EventHandler? ForwardRequested;
     public event EventHandler? RefreshRequested;
+    public event EventHandler? WorkspaceRequested;
     public event EventHandler<string>? NavigateRequested;
     public event EventHandler<string>? HistoryItemClicked;
     public event EventHandler? NewTabRequested;
@@ -409,6 +410,9 @@ public partial class SuperMenuControl : UserControl
         if (chevron != null)
             chevron.Data = StreamGeometry.Parse(_toolsExpanded ? "M7,14L12,9L17,14Z" : "M7,10L12,15L17,10Z");
         LayoutChanged?.Invoke(this, EventArgs.Empty);
+        // Tools sits near the end; when the menu scrolls, show the items it just opened.
+        if (_toolsExpanded && createQr != null)
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => createQr.BringIntoView(), Avalonia.Threading.DispatcherPriority.Background);
     }
 
     public void CollapseTools()
@@ -934,6 +938,8 @@ public partial class SuperMenuControl : UserControl
         var extensionScroll = this.FindControl<ScrollViewer>("ExtensionScroll");
         var dataScroll = this.FindControl<ScrollViewer>("DataManagerScroll");
         var tabScroll = this.FindControl<ScrollViewer>("TabScroll");
+        var mainScroll = this.FindControl<ScrollViewer>("MainMenuScroll");
+        if (mainScroll != null) mainScroll.MaxHeight = double.PositiveInfinity;
         if (historyScroll != null) historyScroll.MaxHeight = 300;
         if (bookmarkScroll != null) bookmarkScroll.MaxHeight = 260;
         if (downloadScroll != null) downloadScroll.MaxHeight = 400;
@@ -946,7 +952,7 @@ public partial class SuperMenuControl : UserControl
         var measureSize = new Size(availableWidth, double.PositiveInfinity);
         Measure(measureSize);
 
-        var activeScroll = VisibleScroll(historyScroll) ?? VisibleScroll(bookmarkScroll) ?? VisibleScroll(downloadScroll) ?? VisibleScroll(visitList) ?? VisibleScroll(extensionScroll) ?? VisibleScroll(dataScroll);
+        var activeScroll = VisibleScroll(mainScroll) ?? VisibleScroll(historyScroll) ?? VisibleScroll(bookmarkScroll) ?? VisibleScroll(downloadScroll) ?? VisibleScroll(visitList) ?? VisibleScroll(extensionScroll) ?? VisibleScroll(dataScroll);
         if (activeScroll != null && DesiredSize.Height > availableHeight)
         {
             double overflow = DesiredSize.Height - availableHeight;
@@ -1027,6 +1033,11 @@ public partial class SuperMenuControl : UserControl
     private void RefreshButton_Click(object? sender, RoutedEventArgs e)
     {
         RefreshRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void WorkspaceButton_Click(object? sender, RoutedEventArgs e)
+    {
+        WorkspaceRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void AddressBar_KeyDown(object? sender, KeyEventArgs e)

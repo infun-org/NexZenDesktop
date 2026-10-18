@@ -207,6 +207,8 @@
             </Border>
         </Popup>
         <controls:PageViewBar Name="PageViewBar" ZIndex="30" IsVisible="False" />
+        <!-- Address bar on top of a new tab (about:blank); shown by UpdateBlankPageAddressBar. -->
+        <controls:BlankPageAddressBar Name="BlankPageAddressBar" ZIndex="20" Margin="16,24,16,0" IsVisible="False" />
 
         <!-- Floating Failsafe Menu Button -->
         <Button Name="FailsafeMenuButton"

@@ -70,6 +70,25 @@ public partial class MainWindow : Window
     private bool _slideInNextTab;
 
     // Window title: "<active page title> - NexZen Desktop" (task windows keep their own title).
+    /// <summary>
+    /// Shows the centered address bar while the active tab is a new tab (about:blank),
+    /// and puts the caret in it when it appears so the user can type right away.
+    /// </summary>
+    private void UpdateBlankPageAddressBar()
+    {
+        if (this.FindControl<NexZen.Desktop.Controls.BlankPageAddressBar>("BlankPageAddressBar") is not { } bar)
+            return;
+        var url = _viewModel?.ActiveTab?.Url;
+        var show = _viewModel?.ActiveTab != null && BlankPage.IsBlank(url) && !_browsersParked;
+        if (bar.IsVisible == show)
+            return;
+        bar.IsVisible = show;
+        if (show)
+            Dispatcher.UIThread.Post(bar.FocusAddressBar, DispatcherPriority.Background);
+        else
+            bar.HideSuggestions();
+    }
+
     private void UpdateWindowTitle()
     {
         if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("NEXZEN_TASK_ID")))
@@ -154,8 +173,15 @@ public partial class MainWindow : Window
             {
                 if (e.PropertyName == nameof(MainViewModel.ActiveTab))
                     Dispatcher.UIThread.Post(UpdateWindowTitle);
+                if (e.PropertyName is nameof(MainViewModel.ActiveTab) or nameof(MainViewModel.CurrentUrl))
+                    Dispatcher.UIThread.Post(UpdateBlankPageAddressBar);
             };
         DataContext = _viewModel;
+        if (this.FindControl<NexZen.Desktop.Controls.BlankPageAddressBar>("BlankPageAddressBar") is { } blankBar)
+        {
+            blankBar.NavigateRequested += (_, url) => NavigateFromMenu(url);
+            blankBar.LockDomainRequested += async (_, _) => await LockCurrentDomainAsync();
+        }
         
         if (_viewModel != null && !_isIndependentWindow)
         {
@@ -235,6 +261,7 @@ public partial class MainWindow : Window
             this.AddHandler(InputElement.KeyDownEvent, OnReopenClosedTabKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             this.AddHandler(InputElement.KeyDownEvent, OnNewIncognitoKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             this.AddHandler(InputElement.KeyDownEvent, OnAiFunctionKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+            this.AddHandler(InputElement.KeyDownEvent, OnWorkspaceKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             this.AddHandler(InputElement.KeyDownEvent, OnFindKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
 
             // Setup Failsafe Button
@@ -333,6 +360,7 @@ public partial class MainWindow : Window
             if (state?.Browser != null) state.Browser.Reload();
             CloseSuperMenu();
         };
+        _superMenuControl.WorkspaceRequested += (_, _) => OpenWorkspace();
 
         _superMenuControl.NavigateRequested += (_, url) => NavigateFromMenu(url);
         _superMenuControl.LockDomainRequested += async (_, _) => await LockCurrentDomainAsync();
@@ -3130,6 +3158,7 @@ public partial class MainWindow : Window
             _menuWindow.AddHandler(KeyDownEvent, OnReopenClosedTabKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             _menuWindow.AddHandler(KeyDownEvent, OnNewIncognitoKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             _menuWindow.AddHandler(KeyDownEvent, OnAiFunctionKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+            _menuWindow.AddHandler(KeyDownEvent, OnWorkspaceKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             _menuWindow.AddHandler(KeyDownEvent, OnFindKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             _menuWindow.AddHandler(KeyDownEvent, OnTabSwitcherKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             _menuWindow.AddHandler(KeyUpEvent, OnTabSwitcherKeyUp, Avalonia.Interactivity.RoutingStrategies.Tunnel);
@@ -3229,7 +3258,7 @@ public partial class MainWindow : Window
 
     private void OnAiFunctionKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key != Key.I || !IsAiFunctionChord(e.KeyModifiers))
+        if (e.Key != Key.I || !IsCtrlOrCmdShiftChord(e.KeyModifiers))
             return;
         e.Handled = true;
         CloseSuperMenu();
@@ -3237,7 +3266,25 @@ public partial class MainWindow : Window
             app.ShowAiFunctionWindow();
     }
 
-    internal static bool IsAiFunctionChord(KeyModifiers mods)
+    // Ctrl+Shift+W, or Cmd+Shift+W on macOS. Chrome uses this chord to close the window;
+    // NexZen has no close-window shortcut, so it opens Workspace instead.
+    private void OnWorkspaceKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.W || !IsCtrlOrCmdShiftChord(e.KeyModifiers))
+            return;
+        e.Handled = true;
+        OpenWorkspace();
+    }
+
+    private void OpenWorkspace()
+    {
+        CloseSuperMenu();
+        // Placeholder until the Workspace feature is defined.
+        ShowNotification("Workspace", "Workspace is coming soon.");
+    }
+
+    // Shift plus exactly one of Ctrl or Meta (Cmd on macOS), no Alt.
+    internal static bool IsCtrlOrCmdShiftChord(KeyModifiers mods)
     {
         var shift = mods.HasFlag(KeyModifiers.Shift);
         var alt = mods.HasFlag(KeyModifiers.Alt);
