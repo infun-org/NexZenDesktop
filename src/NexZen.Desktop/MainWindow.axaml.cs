@@ -1562,15 +1562,17 @@ public partial class MainWindow : Window
         {
             HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
             VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
-            Padding = new Thickness(14),
-            Background = new SolidColorBrush(Color.FromArgb(205, 22, 27, 34)),
-            CornerRadius = new CornerRadius(14),
+            // Same frame as the app's other floating windows (light grey, rounded, thin border).
+            Padding = new Thickness(22, 18, 22, 22),
+            Background = new SolidColorBrush(Color.Parse("#F3F3F3")),
+            BorderBrush = new SolidColorBrush(Color.Parse("#D8D8D8")),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(16),
             BoxShadow = new BoxShadows(new BoxShadow
             {
-                Blur = 26,
-                Spread = 1,
-                OffsetY = 8,
-                Color = Color.FromArgb(105, 0, 0, 0)
+                Blur = 18,
+                OffsetY = 4,
+                Color = Color.FromArgb(48, 0, 0, 0)
             }),
             Opacity = 0
         };
@@ -1606,7 +1608,8 @@ public partial class MainWindow : Window
         if (_tabSwitcherPanel == null || _viewModel == null || _viewModel.Tabs.Count == 0)
             return;
 
-        _tabSwitcherPanel.Width = Bounds.Width;
+        // The frame fits the cards; it is only as wide as the window allows.
+        _tabSwitcherPanel.MaxWidth = Math.Max(200, Bounds.Width - 32);
         var count = _viewModel.Tabs.Count;
         var visibleCount = Math.Min(5, count);
         var nominalRowWidth = 340 + Math.Max(0, visibleCount - 1) * 240 + Math.Max(0, visibleCount - 1) * 12;
@@ -1614,8 +1617,10 @@ public partial class MainWindow : Window
         var cards = new StackPanel
         {
             Orientation = Avalonia.Layout.Orientation.Horizontal,
-            Spacing = 12 * scale,
-            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+            Spacing = 14 * scale,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+            // Cards stand on one line, so the bigger selected card rises above the others.
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Bottom
         };
         var startOffset = visibleCount switch
         {
@@ -1640,13 +1645,13 @@ public partial class MainWindow : Window
             }
             else
             {
-                preview.Children.Add(new Border { Background = new SolidColorBrush(Color.FromRgb(225, 231, 239)) });
+                preview.Children.Add(new Border { Background = new SolidColorBrush(Color.Parse("#E9E9E9")) });
                 preview.Children.Add(new TextBlock
                 {
                     Text = tab.Title,
                     HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
-                    Foreground = new SolidColorBrush(Color.FromRgb(75, 83, 94)),
+                    Foreground = new SolidColorBrush(Color.Parse("#555555")),
                     FontSize = 16,
                     TextTrimming = TextTrimming.CharacterEllipsis
                 });
@@ -1654,7 +1659,9 @@ public partial class MainWindow : Window
 
             var caption = new Border
             {
-                Background = new SolidColorBrush(Color.FromArgb(225, 255, 255, 255)),
+                Background = new SolidColorBrush(Color.FromArgb(235, 255, 255, 255)),
+                BorderBrush = new SolidColorBrush(Color.Parse("#E4E4E4")),
+                BorderThickness = new Thickness(0, 1, 0, 0),
                 Padding = new Thickness(10, 7),
                 VerticalAlignment = Avalonia.Layout.VerticalAlignment.Bottom,
                 Child = new TextBlock
@@ -1662,7 +1669,7 @@ public partial class MainWindow : Window
                     Text = tab.Title,
                     FontSize = distance == 0 ? 13 : 11,
                     FontWeight = distance == 0 ? FontWeight.SemiBold : FontWeight.Normal,
-                    Foreground = new SolidColorBrush(Color.FromRgb(34, 39, 46)),
+                    Foreground = new SolidColorBrush(Color.Parse("#2A2A2A")),
                     TextTrimming = TextTrimming.CharacterEllipsis,
                     MaxLines = 1
                 }
@@ -1674,17 +1681,19 @@ public partial class MainWindow : Window
                 Width = width,
                 Height = height,
                 Margin = new Thickness(0),
-                CornerRadius = new CornerRadius(9),
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Bottom,
+                CornerRadius = new CornerRadius(10),
                 Background = Brushes.White,
+                // Selected: the app's accent (the yellow of its main buttons); others: thin grey.
                 BorderBrush = distance == 0
-                    ? new SolidColorBrush(Color.FromRgb(40, 148, 255))
-                    : new SolidColorBrush(Color.FromArgb(190, 255, 255, 255)),
-                BorderThickness = new Thickness(distance == 0 ? 3 : 1),
+                    ? new SolidColorBrush(Color.Parse("#E2CC6B"))
+                    : new SolidColorBrush(Color.Parse("#CFCFCF")),
+                BorderThickness = new Thickness(distance == 0 ? 2.5 : 1),
                 BoxShadow = new BoxShadows(new BoxShadow
                 {
-                    Blur = distance == 0 ? 18 : 10,
-                    OffsetY = 5,
-                    Color = Color.FromArgb(distance == 0 ? (byte)100 : (byte)55, 0, 0, 0)
+                    Blur = distance == 0 ? 14 : 6,
+                    OffsetY = distance == 0 ? 4 : 2,
+                    Color = Color.FromArgb(distance == 0 ? (byte)60 : (byte)28, 0, 0, 0)
                 }),
                 ClipToBounds = true,
                 Child = preview,
