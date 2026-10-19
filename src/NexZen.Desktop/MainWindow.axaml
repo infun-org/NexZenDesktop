@@ -210,6 +210,9 @@
         <!-- Address bar on top of a new tab (about:blank); shown by UpdateBlankPageAddressBar. -->
         <controls:BlankPageAddressBar Name="BlankPageAddressBar" ZIndex="20" Margin="16,24,16,0" IsVisible="False" />
 
+        <!-- Colored frame for a window opened from a workspace (WorkspaceColor); never takes input. -->
+        <Border Name="WorkspaceFrame" ZIndex="1000" BorderThickness="4" IsHitTestVisible="False" IsVisible="False" />
+
         <!-- Floating Failsafe Menu Button -->
         <Button Name="FailsafeMenuButton"
                 HorizontalAlignment="Left"

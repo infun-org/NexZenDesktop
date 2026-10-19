@@ -1,0 +1,65 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:NexZen.Application.ViewModels"
+        xmlns:controls="using:NexZen.Desktop.Controls"
+        x:Class="NexZen.Desktop.Views.CustomCssWindow"
+        x:DataType="vm:CustomCssViewModel"
+        Width="540" Height="720" MinWidth="380" MinHeight="360"
+        Title="{Binding Title}"
+        Icon="avares://NexZen.Desktop/Assets/icon64.ico"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
+        WindowDecorations="None"
+        ShowInTaskbar="False"
+        Topmost="True"
+        WindowStartupLocation="Manual">
+  <!-- Pinned like the workspace editor: stays up while the page is used, so changes can be checked. -->
+  <Window.Styles>
+    <Style Selector="Button.YellowPill">
+      <Setter Property="Background" Value="#FCEFB4"/>
+      <Setter Property="BorderBrush" Value="#E2CC6B"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Foreground" Value="#4A3D10"/>
+      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="Padding" Value="26,6"/>
+      <Setter Property="FontSize" Value="15"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Button.YellowPill:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#F7E595"/>
+    </Style>
+    <Style Selector="ToggleSwitch.Green:checked /template/ Border#SwitchKnobBounds">
+      <Setter Property="Background" Value="#3B8F4A"/>
+    </Style>
+    <Style Selector="ToggleSwitch.Green:checked:pointerover /template/ Border#SwitchKnobBounds">
+      <Setter Property="Background" Value="#347F42"/>
+    </Style>
+  </Window.Styles>
+
+  <Border CornerRadius="16" BorderBrush="#D8D8D8" BorderThickness="1" Margin="8" Background="#F3F3F3"
+          PointerPressed="Background_PointerPressed">
+    <Border.Effect>
+      <DropShadowDirectionEffect ShadowDepth="2" BlurRadius="10" Color="#18000000" />
+    </Border.Effect>
+    <Grid RowDefinitions="Auto,*,Auto" Margin="10,6,10,10">
+      <Grid Grid.Row="0" ColumnDefinitions="Auto,Auto,*,Auto,Auto" Margin="0,0,0,6">
+        <TextBlock Text="{Binding Title}" FontSize="17" Foreground="#2A2A2A" VerticalAlignment="Center"
+                   TextTrimming="CharacterEllipsis" MaxWidth="300"/>
+        <ToggleSwitch Grid.Column="1" Classes="Green" IsChecked="{Binding Enabled}" OnContent="" OffContent=""
+                      Margin="12,0,0,0" VerticalAlignment="Center" ToolTip.Tip="Apply this CSS"/>
+        <Button Grid.Column="3" Classes="YellowPill" Content="Save CSS" Command="{Binding SaveCommand}"/>
+        <Button Grid.Column="4" Background="Transparent" BorderThickness="0" Padding="6" Margin="4,0,0,0"
+                CornerRadius="12" Cursor="Hand" VerticalAlignment="Center" ToolTip.Tip="Close (Esc)"
+                Command="{Binding CloseCommand}">
+          <PathIcon Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"
+                    Width="12" Height="12" Foreground="#666666"/>
+        </Button>
+      </Grid>
+
+      <controls:CssEditor Grid.Row="1" Name="Editor" Text="{Binding Css}"/>
+
+      <TextBlock Grid.Row="2" Text="{Binding StatusText}" Foreground="#4A4A4A" FontSize="13" Margin="4,6,0,0"
+                 IsVisible="{Binding StatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+    </Grid>
+  </Border>
+</Window>

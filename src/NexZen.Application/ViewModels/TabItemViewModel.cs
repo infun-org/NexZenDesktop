@@ -25,6 +25,9 @@ public partial class TabItemViewModel : ObservableObject
     [ObservableProperty]
     private int _loadingProgress;
 
+    /// <summary>The favicon as PNG bytes (what FaviconSource was decoded from), kept for saving.</summary>
+    public byte[]? FaviconPng { get; set; }
+
     public TabItemViewModel(string id, string url, string title)
     {
         _id = id;

@@ -1,0 +1,50 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="NexZen.Desktop.Controls.CssEditor">
+  <!-- A transparent TextBox typed over a TextBlock that shows the same text colored by CustomCss.Tokenize. -->
+  <UserControl.Styles>
+    <Style Selector="TextBox.Code">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Foreground" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="MinHeight" Value="0"/>
+      <Setter Property="CaretBrush" Value="#222222"/>
+      <Setter Property="SelectionBrush" Value="#553399FF"/>
+      <Setter Property="SelectionForegroundBrush" Value="Transparent"/>
+    </Style>
+    <!-- Fluent paints the box white on hover/focus, which would hide the colored layer. -->
+    <Style Selector="TextBox.Code /template/ Border#PART_BorderElement">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    <Style Selector="TextBox.Code:pointerover /template/ Border#PART_BorderElement">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="TextBox.Code:focus /template/ Border#PART_BorderElement">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    <Style Selector="TextBox.Code:pointerover">
+      <Setter Property="Foreground" Value="Transparent"/>
+    </Style>
+    <Style Selector="TextBox.Code:focus">
+      <Setter Property="Foreground" Value="Transparent"/>
+    </Style>
+  </UserControl.Styles>
+
+  <Border Background="#FFFFFF" BorderBrush="#BDBDBD" BorderThickness="1" CornerRadius="10" ClipToBounds="True"
+          PointerPressed="Surface_PointerPressed">
+    <ScrollViewer Name="Scroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Padding="10,8">
+      <Grid>
+        <TextBlock Name="Highlight" TextWrapping="NoWrap" IsHitTestVisible="False"
+                   FontFamily="{Binding #Input.FontFamily}" FontSize="{Binding #Input.FontSize}"/>
+        <TextBlock Name="Placeholder" Text="/* CSS for this site, e.g. body { background: #111; } */"
+                   Foreground="#A0A0A0" IsHitTestVisible="False" TextWrapping="NoWrap"
+                   FontFamily="{Binding #Input.FontFamily}" FontSize="{Binding #Input.FontSize}"/>
+        <TextBox Name="Input" Classes="Code" AcceptsReturn="True" AcceptsTab="True" TextWrapping="NoWrap"
+                 FontFamily="DejaVu Sans Mono, Consolas, Menlo, monospace" FontSize="14"/>
+      </Grid>
+    </ScrollViewer>
+  </Border>
+</UserControl>

@@ -450,7 +450,10 @@ namespace Xilium.CefGlue.Avalonia.Platform
             _windowVisibleObservable?.Dispose();
             _windowVisibleObservable = null;
             SetTooltip(null); // Clear tooltip
-            VisibilityChanged(false);
+            // The adapter subscribes only once CEF has created the browser, which needs a size.
+            // A background tab that was never shown has no subscriber when its window closes;
+            // invoking null here crashed the whole app (CEF's SIGSEGV handler bypasses .NET's NRE).
+            VisibilityChanged?.Invoke(false);
         }
 
         private void OnAttachedToVisualTree(object sender, VisualTreeAttachmentEventArgs e)

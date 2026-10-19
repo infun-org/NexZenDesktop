@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -130,6 +131,116 @@ public partial class App : Avalonia.Application
         }, DispatcherPriority.Loaded);
     }
 
+    private NexZen.Desktop.Views.WorkspaceWindow? _workspaceWindow;
+    /// <summary>Browser windows opened from a workspace, by workspace id, until they close.</summary>
+    private readonly System.Collections.Generic.Dictionary<int, MainWindow> _openWorkspaceWindows = new();
+
+    /// <summary>
+    /// Shows the workspace window where AI Function opens. "Add this tab" and "Update"
+    /// use the tabs of <paramref name="source"/>, the browser window it was opened from.
+    /// </summary>
+    public async void ShowWorkspaceWindow(MainViewModel source, Window owner)
+    {
+        if (ServiceProvider?.GetService<WorkspaceViewModel>() is not { } workspaces)
+            return;
+        // Resolved at click time: the workspace windows float over whichever browser window
+        // the user went back to, and that is the one "this tab" means.
+        workspaces.GetActiveTab = () => WorkspaceViewModel.FromOpenTab(MainWindow.LastActiveTabs(source)?.ActiveTab);
+        workspaces.OpenWorkspace = request =>
+        {
+            _workspaceWindow?.Hide();
+            // One window per workspace: bring back the one already open instead of a second copy.
+            if (_openWorkspaceWindows.TryGetValue(request.WorkspaceId, out var open))
+            {
+                open.WorkspaceName = request.Name;
+                open.WorkspaceColor = request.Color;
+                open.ShowTab(request.FocusUrl);
+                return;
+            }
+            var window = NexZen.Desktop.Views.PopupBrowserWindow.OpenMany(owner, request.Urls, request.Name);
+            if (window == null)
+                return;
+            window.WorkspaceColor = request.Color;
+            _openWorkspaceWindows[request.WorkspaceId] = window;
+            window.Closed += (_, _) =>
+            {
+                if (_openWorkspaceWindows.TryGetValue(request.WorkspaceId, out var current) && ReferenceEquals(current, window))
+                    _openWorkspaceWindows.Remove(request.WorkspaceId);
+            };
+            if (request.FocusUrl != null)
+                window.ShowTab(request.FocusUrl);
+        };
+        workspaces.OpenEditor = id => ShowWorkspaceEditor(source, owner, id);
+
+        _workspaceWindow ??= new NexZen.Desktop.Views.WorkspaceWindow { DataContext = workspaces };
+        if (_workspaceWindow.WindowState == WindowState.Minimized)
+            _workspaceWindow.WindowState = WindowState.Normal;
+        PlaceWidgetInCorner(_workspaceWindow);
+        _workspaceWindow.Show();
+        PlaceWidgetInCorner(_workspaceWindow);
+        _workspaceWindow.Activate();
+        try
+        {
+            await workspaces.LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            workspaces.StatusText = "Could not load workspaces.";
+            Program.StartupLog.Write("workspace load failed: " + ex.Message);
+        }
+    }
+
+    private NexZen.Desktop.Views.WorkspaceEditorWindow? _workspaceEditorWindow;
+    private NexZen.Desktop.Views.CustomCssWindow? _customCssWindow;
+
+    /// <summary>Opens the pinned Custom CSS window for a page's site; Save reloads that tab.</summary>
+    public void ShowCustomCssWindow(string pageUrl, Action reloadTab)
+    {
+        if (ServiceProvider?.GetService<CustomCssViewModel>() is not { } editor || !editor.Load(pageUrl))
+            return;
+        editor.ReloadPage = reloadTab;
+        editor.CloseRequested = () => _customCssWindow?.Hide();
+        _customCssWindow ??= new NexZen.Desktop.Views.CustomCssWindow { DataContext = editor };
+        PlaceWidgetInCorner(_customCssWindow);
+        _customCssWindow.Show();
+        PlaceWidgetInCorner(_customCssWindow);
+        _customCssWindow.Activate();
+    }
+
+    /// <summary>
+    /// The pinned editor window, for "Add new" (<paramref name="workspaceId"/> null) and for
+    /// "Update" (name and tabs of that workspace). A new draft is kept when the window is
+    /// closed; after a save the workspace window comes back with the changes.
+    /// </summary>
+    private async void ShowWorkspaceEditor(MainViewModel source, Window owner, int? workspaceId)
+    {
+        if (ServiceProvider?.GetService<WorkspaceEditorViewModel>() is not { } editor)
+            return;
+        if (workspaceId is int id)
+        {
+            var workspace = await ServiceProvider.GetRequiredService<IWorkspaceRepository>().GetByIdAsync(id);
+            if (workspace == null)
+                return;
+            editor.BeginEdit(workspace);
+        }
+        else if (editor.EditingId != null)
+            editor.Reset();
+        editor.GetCurrentTabs = () => (MainWindow.LastActiveTabs(source) ?? source).Tabs
+            .Select(WorkspaceViewModel.FromOpenTab)
+            .Where(tab => tab != null)
+            .Select(tab => tab!)
+            .ToList();
+        editor.CloseRequested = () => _workspaceEditorWindow?.Hide();
+        editor.Saved = _ => Dispatcher.UIThread.Post(() => ShowWorkspaceWindow(source, owner));
+
+        _workspaceEditorWindow ??= new NexZen.Desktop.Views.WorkspaceEditorWindow { DataContext = editor };
+        _workspaceWindow?.Hide();
+        PlaceWidgetInCorner(_workspaceEditorWindow);
+        _workspaceEditorWindow.Show();
+        PlaceWidgetInCorner(_workspaceEditorWindow);
+        _workspaceEditorWindow.Activate();
+    }
+
     private static void PlaceWidgetInCorner(Window? window)
     {
         if (window == null)
@@ -203,22 +314,44 @@ public partial class App : Avalonia.Application
         }
     }
 
+    private static string ResolveDatabasePath()
+    {
+        try
+        {
+            var (path, migrated) = NexZen.Infrastructure.Data.DatabaseLocation.Resolve(
+                null, AppContext.BaseDirectory, Environment.CurrentDirectory);
+            Program.StartupLog.Write(migrated == null
+                ? "database: " + path
+                : $"database: {path} (copied from {migrated})");
+            return path;
+        }
+        catch (Exception ex)
+        {
+            // Fall back to the old behaviour rather than failing to start.
+            Program.StartupLog.Write("database location failed, using working directory: " + ex.Message);
+            return NexZen.Infrastructure.Data.DatabaseLocation.FileName;
+        }
+    }
+
     public override void OnFrameworkInitializationCompleted()
     {
         StartupTimer.Mark("Avalonia framework ready");
         var services = new ServiceCollection();
 
-        // 1. Database
+        // 1. Database: one fixed file, no longer relative to the working directory.
+        var database = ResolveDatabasePath();
         services.AddDbContext<NexZenDbContext>(options =>
         {
-            options.UseSqlite("Data Source=nexzen.db");
+            options.UseSqlite(NexZen.Infrastructure.Data.DatabaseLocation.ConnectionString(database));
         }, contextLifetime: ServiceLifetime.Transient);
+        services.AddTransient<Func<IWorkspaceRepository>>(sp => () => sp.GetRequiredService<IWorkspaceRepository>());
 
         // 2. Repositories & Services
         services.AddTransient<IBookmarkRepository, BookmarkRepository>();
         services.AddTransient<IHistoryRepository, HistoryRepository>();
         services.AddTransient<IDownloadRepository, DownloadRepository>();
         services.AddTransient<ISavedPasswordRepository, SavedPasswordRepository>();
+        services.AddTransient<IWorkspaceRepository, WorkspaceRepository>();
         services.AddSingleton<AesGcmPasswordEncryptionService>();
         services.AddSingleton<IPasswordEncryptionService>(provider => provider.GetRequiredService<AesGcmPasswordEncryptionService>());
         services.AddSingleton<ISettingsService, SettingsService>();
@@ -227,6 +360,7 @@ public partial class App : Avalonia.Application
         services.AddSingleton<DomainLockStore>();
         services.AddSingleton<IAiToolRuntime, LiveFactsToolRuntime>();
         services.AddSingleton<IWebLookup, PublicWebLookup>();
+        services.AddSingleton<IFaviconFetcher, NexZen.Infrastructure.Services.FaviconFetcher>();
         services.AddSingleton<CefResearchBrowser>();
         services.AddSingleton<IBrowserResearch>(sp => sp.GetRequiredService<CefResearchBrowser>());
         services.AddSingleton<IAiChatClient, OpenAiCompatibleChatClient>();
@@ -234,6 +368,12 @@ public partial class App : Avalonia.Application
         services.AddSingleton<ILocalLlamaServer, LocalLlamaServer>();
         services.AddSingleton<ILocalImageGenerator, LocalJanusImageGenerator>();
         services.AddSingleton<AiFunctionViewModel>();
+        services.AddSingleton<WorkspaceViewModel>();
+        services.AddSingleton<WorkspaceEditorViewModel>();
+        services.AddTransient<ICustomStyleRepository, CustomStyleRepository>();
+        services.AddTransient<Func<ICustomStyleRepository>>(sp => () => sp.GetRequiredService<ICustomStyleRepository>());
+        services.AddSingleton<NexZen.Application.Services.CustomStyleStore>();
+        services.AddSingleton<CustomCssViewModel>();
 
         // 3. NexShare Services
         services.AddSingleton<INexShareCrypto, NexShareCrypto>();
@@ -291,6 +431,17 @@ public partial class App : Avalonia.Application
                 ON ""SavedPasswords"" (""Origin"", ""Username"");");
         }
         catch { }
+        try
+        {
+            NexZen.Infrastructure.Data.WorkspaceSchema.Ensure(dbContext);
+            NexZen.Infrastructure.Data.CustomStyleSchema.Ensure(dbContext);
+            // Before the first page loads, so its Custom CSS applies right away.
+            ServiceProvider.GetRequiredService<NexZen.Application.Services.CustomStyleStore>().LoadAsync().GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            Program.StartupLog.Write("workspace/custom css tables failed: " + ex.Message);
+        }
         StartupTimer.Mark("database ready");
 
         // Update Tray Icon when NexShare status changes

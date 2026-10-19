@@ -107,6 +107,9 @@ public partial class IncognitoWindow : Window
         WebAudioDecodeShim.Attach(browser);
         var domainSession = new DomainLockBrowserSession();
         _find.Attach(browser);
+        // Custom CSS applies here too (it is edited from normal windows only).
+        browser.LoadStart += (_, e) => { if (e.Frame.IsMain) MainWindow.ApplyCustomCss(e.Frame); };
+        browser.LoadEnd += (_, e) => { if (e.Frame.IsMain) MainWindow.ApplyCustomCss(e.Frame); };
         browser.Settings.WindowlessFrameRate = 60;
         browser.LifeSpanHandler = new IncognitoLifeSpanHandler(this);
         browser.RequestHandler = new NewTabRequestHandler(

@@ -9,6 +9,9 @@
         <ResourceDictionary>
             <converters:StringGeometryConverter x:Key="StringGeometryConverter" />
             <converters:PathToBitmapConverter x:Key="PathToBitmapConverter" />
+            <converters:DataUrlToBitmapConverter x:Key="DataUrlToBitmapConverter" />
+            <converters:HexToBrushConverter x:Key="HexToBrushConverter" />
+            <converters:HexToThicknessConverter x:Key="HexToThicknessConverter" />
             <ControlTheme x:Key="{x:Type notifications:NotificationCard}" TargetType="notifications:NotificationCard">
                 <Setter Property="UseLayoutRounding" Value="True"/>
                 <Setter Property="Width" Value="360"/>

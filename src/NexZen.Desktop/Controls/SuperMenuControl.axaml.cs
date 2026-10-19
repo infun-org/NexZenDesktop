@@ -56,6 +56,7 @@ public partial class SuperMenuControl : UserControl
     public event EventHandler? InspectRequested;
     public event EventHandler? PageViewRequested;
     public event EventHandler? CreateQrRequested;
+    public event EventHandler? CustomCssRequested;
     public event EventHandler? AiFunctionRequested;
     public event EventHandler? SearchWithRequested;
     public event EventHandler? LockDomainRequested;
@@ -406,13 +407,16 @@ public partial class SuperMenuControl : UserControl
         var createQr = this.FindControl<Button>("CreateQrButton");
         if (createQr != null)
             createQr.IsVisible = _toolsExpanded;
+        var customCss = this.FindControl<Button>("CustomCssButton");
+        if (customCss != null)
+            customCss.IsVisible = _toolsExpanded;
         var chevron = this.FindControl<PathIcon>("ToolsChevron");
         if (chevron != null)
             chevron.Data = StreamGeometry.Parse(_toolsExpanded ? "M7,14L12,9L17,14Z" : "M7,10L12,15L17,10Z");
         LayoutChanged?.Invoke(this, EventArgs.Empty);
         // Tools sits near the end; when the menu scrolls, show the items it just opened.
-        if (_toolsExpanded && createQr != null)
-            Avalonia.Threading.Dispatcher.UIThread.Post(() => createQr.BringIntoView(), Avalonia.Threading.DispatcherPriority.Background);
+        if (_toolsExpanded && customCss != null)
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => customCss.BringIntoView(), Avalonia.Threading.DispatcherPriority.Background);
     }
 
     public void CollapseTools()
@@ -564,6 +568,11 @@ public partial class SuperMenuControl : UserControl
     private void CreateQrButton_Click(object? sender, RoutedEventArgs e)
     {
         CreateQrRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void CustomCssButton_Click(object? sender, RoutedEventArgs e)
+    {
+        CustomCssRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void PageViewButton_Click(object? sender, RoutedEventArgs e)

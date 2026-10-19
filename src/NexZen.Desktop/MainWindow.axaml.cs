@@ -89,14 +89,115 @@ public partial class MainWindow : Window
             bar.HideSuggestions();
     }
 
+    private static NexZen.Application.Services.CustomStyleStore? CustomStyles
+        => App.ServiceProvider?.GetService<NexZen.Application.Services.CustomStyleStore>();
+
+    /// <summary>Puts the site's saved Custom CSS (if any, and switched on) into the page.</summary>
+    internal static void ApplyCustomCss(Xilium.CefGlue.CefFrame? frame)
+    {
+        try
+        {
+            var url = frame?.Url;
+            var css = CustomStyles?.CssForPage(url);
+            if (css != null)
+                frame!.ExecuteJavaScript(NexZen.Application.Services.CustomCss.InjectionScript(css), url, 0);
+        }
+        catch (Exception ex)
+        {
+            Program.StartupLog.Write("[CustomCss] inject failed: " + ex.Message);
+        }
+    }
+
+    /// <summary>SuperMenu › Tools › Custom CSS: edit the active tab's site stylesheet.</summary>
+    private void OpenCustomCss()
+    {
+        CloseSuperMenu();
+        var tab = _viewModel?.ActiveTab;
+        if (tab == null || NexZen.Application.Services.CustomCss.SiteKey(tab.Url) == null)
+        {
+            ShowNotification("Custom CSS", "Open a web page first.", NotificationType.Warning);
+            return;
+        }
+        var tabId = tab.Id;
+        void Reload()
+        {
+            if (_tabs.TryGetValue(tabId, out var state) && state.Browser != null)
+                state.Browser.Reload();
+        }
+        if (Avalonia.Application.Current is App app)
+            app.ShowCustomCssWindow(tab.Url, Reload);
+    }
+
+    /// <summary>The browser window that was focused most recently (main or independent).</summary>
+    internal static WeakReference<MainWindow>? LastActiveBrowserWindow { get; private set; }
+
+    /// <summary>Tabs of the most recently focused browser window that is still open.</summary>
+    internal static MainViewModel? LastActiveTabs(MainViewModel? fallback)
+        => LastActiveBrowserWindow != null && LastActiveBrowserWindow.TryGetTarget(out var window)
+           && window.IsVisible && window._viewModel != null
+            ? window._viewModel
+            : fallback;
+
+    /// <summary>Set when the window was opened from a workspace; shown first in the title.</summary>
+    internal string? WorkspaceName
+    {
+        get => _workspaceName;
+        set
+        {
+            _workspaceName = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+            UpdateWindowTitle();
+        }
+    }
+    private string? _workspaceName;
+
+    /// <summary>Workspace border color (#RRGGBB) drawn around the window, or null for none.</summary>
+    internal string? WorkspaceColor
+    {
+        get => _workspaceColor;
+        set
+        {
+            _workspaceColor = value;
+            if (this.FindControl<Border>("WorkspaceFrame") is not { } frame)
+                return;
+            if (!string.IsNullOrWhiteSpace(value) && Color.TryParse(value, out var color))
+            {
+                frame.BorderBrush = new SolidColorBrush(color);
+                frame.IsVisible = true;
+            }
+            else
+                frame.IsVisible = false;
+        }
+    }
+    private string? _workspaceColor;
+
+    /// <summary>Brings this window forward on <paramref name="url"/>'s tab, adding the tab if it was closed.</summary>
+    internal void ShowTab(string? url)
+    {
+        if (!IsVisible)
+            Show();
+        if (WindowState == WindowState.Minimized)
+            WindowState = WindowState.Normal;
+        Activate();
+        if (_viewModel == null || string.IsNullOrWhiteSpace(url))
+            return;
+        static string Key(string? u) => (u ?? "").Trim().TrimEnd('/').ToLowerInvariant();
+        static string Host(string? u) => Uri.TryCreate(u, UriKind.Absolute, out var p)
+            ? (p.Host.StartsWith("www.", StringComparison.OrdinalIgnoreCase) ? p.Host[4..] : p.Host).ToLowerInvariant()
+            : "";
+        // Exact address first; else the same site (the page may have redirected or moved on).
+        var tab = _viewModel.Tabs.FirstOrDefault(t => Key(t.Url) == Key(url))
+                  ?? _viewModel.Tabs.FirstOrDefault(t => Host(t.Url) is { Length: > 0 } h && h == Host(url));
+        if (tab != null)
+            _viewModel.SwitchTab(tab.Id);
+        else
+            _viewModel.AddTab(url);
+    }
+
     private void UpdateWindowTitle()
     {
         if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("NEXZEN_TASK_ID")))
             return;
-        var pageTitle = _viewModel?.ActiveTab?.Title;
-        Title = string.IsNullOrWhiteSpace(pageTitle) || pageTitle == "about:blank"
-            ? "NexZen Desktop"
-            : $"{pageTitle} - NexZen Desktop";
+        Title = NexZen.Application.Services.WindowTitle.Compose(_workspaceName, _viewModel?.ActiveTab?.Title);
     }
     private int _historySlideToken;
     private int _slideOutToken;
@@ -166,6 +267,8 @@ public partial class MainWindow : Window
         }
         
         _viewModel = viewModel ?? App.ServiceProvider?.GetRequiredService<MainViewModel>();
+        // Workspace "this window" actions use the browser window the user was last in.
+        Activated += (_, _) => LastActiveBrowserWindow = new WeakReference<MainWindow>(this);
         if (!_isIndependentWindow)
             StartupTimer.MarkOnce("MainViewModel resolved");
         if (_viewModel != null)
@@ -406,6 +509,7 @@ public partial class MainWindow : Window
             OpenPageView();
         };
         _superMenuControl.CreateQrRequested += (_, _) => _ = CreateQrFromMenuAsync();
+        _superMenuControl.CustomCssRequested += (_, _) => OpenCustomCss();
         _superMenuControl.AiFunctionRequested += (_, _) =>
         {
             CloseSuperMenu();
@@ -1074,7 +1178,11 @@ public partial class MainWindow : Window
         browser.LoadStart += (_, e) =>
         {
             if (e.Frame.IsMain)
+            {
                 StartupTimer.MarkOnce("first page load start");
+                // Early, so the site's own styles do not flash first; repeated at LoadEnd.
+                ApplyCustomCss(e.Frame);
+            }
         };
         browser.BrowserInitialized += () => { _ = ApproximateGeolocation.PublishAsync(() => browser.GetBrowserHost()); };
         browser.BrowserInitialized += () =>
@@ -1123,6 +1231,7 @@ public partial class MainWindow : Window
                                 return;
 
                             tab.FaviconSource = PageCopy.DecodeBitmap(png);
+                            tab.FaviconPng = png;
                         })));
                 }
                 catch (Exception ex)
@@ -1244,7 +1353,10 @@ public partial class MainWindow : Window
         browser.LoadEnd += (s, e) =>
         {
             if (e.Frame.IsMain)
+            {
                 StartupTimer.MarkOnce("first page load end");
+                ApplyCustomCss(e.Frame);
+            }
             var url = e.Frame.Url ?? "";
             if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
                 || url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
@@ -1320,6 +1432,7 @@ public partial class MainWindow : Window
                 {
                     state.FaviconRequestVersion++;
                     tab.FaviconSource = null;
+                    tab.FaviconPng = null;
                     var isLockPage = domainSession.TryGetChallenge(address, out var pageTarget);
                     var displayAddress = BlankPage.ForDisplay(isLockPage ? pageTarget : address);
                     if (_viewModel?.ActiveTab?.Id == tab.Id)
@@ -3279,8 +3392,8 @@ public partial class MainWindow : Window
     private void OpenWorkspace()
     {
         CloseSuperMenu();
-        // Placeholder until the Workspace feature is defined.
-        ShowNotification("Workspace", "Workspace is coming soon.");
+        if (_viewModel != null && Avalonia.Application.Current is App app)
+            app.ShowWorkspaceWindow(_viewModel, this);
     }
 
     // Shift plus exactly one of Ctrl or Meta (Cmd on macOS), no Alt.

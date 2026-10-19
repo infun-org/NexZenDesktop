@@ -16,13 +16,20 @@ public static class PopupBrowserWindow
 
     public static bool Open(Window? owner, string? url, MainViewModel? viewModel)
     {
-        if (!TryNormalize(url, out var target) || App.ServiceProvider is not { } services)
+        if (App.ServiceProvider is not { } services)
             return false;
-
         // Each full browser window has its own tabs and browser state while
         // repositories and settings continue to point at the shared database.
         var independentViewModel = ActivatorUtilities.CreateInstance<MainViewModel>(services, false);
-        var window = new MainWindow(independentViewModel, target);
+        return Open(owner, url, independentViewModel, out _);
+    }
+
+    private static bool Open(Window? owner, string? url, MainViewModel independentViewModel, out MainWindow window)
+    {
+        window = null!;
+        if (!TryNormalize(url, out var target))
+            return false;
+        window = new MainWindow(independentViewModel, target);
         if (owner != null)
         {
             window.WindowStartupLocation = WindowStartupLocation.Manual;
@@ -37,6 +44,34 @@ public static class PopupBrowserWindow
         window.Show();
         window.Activate();
         return true;
+    }
+
+    /// <summary>
+    /// Opens one new window holding all of these URLs as tabs, the first one active.
+    /// A workspace name is shown first in that window's title.
+    /// </summary>
+    public static MainWindow? OpenMany(Window? owner, System.Collections.Generic.IReadOnlyList<string> urls, string? workspaceName = null)
+    {
+        var targets = new System.Collections.Generic.List<string>();
+        foreach (var url in urls)
+        {
+            if (TryNormalize(url, out var target))
+                targets.Add(target);
+        }
+        if (targets.Count == 0 || App.ServiceProvider is not { } services)
+            return null;
+
+        var viewModel = ActivatorUtilities.CreateInstance<MainViewModel>(services, false);
+        if (!Open(owner, targets[0], viewModel, out var window))
+            return null;
+        window.WorkspaceName = workspaceName;
+        var firstTabId = viewModel.ActiveTab?.Id;
+        for (var i = 1; i < targets.Count; i++)
+            viewModel.AddTab(targets[i]);
+        if (firstTabId != null)
+            viewModel.SwitchTab(firstTabId);
+        window.Activate();
+        return window;
     }
 
     public static bool CanOpen(string? url) => TryNormalize(url, out _);

@@ -1,0 +1,171 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NexZen.Application.ViewModels"
+             x:Class="NexZen.Desktop.Views.WorkspaceView"
+             x:DataType="vm:WorkspaceViewModel">
+  <!-- Same frame, colors and pills as AI Function. -->
+  <UserControl.Styles>
+    <Style Selector="Button.Pill">
+      <Setter Property="CornerRadius" Value="12"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/>
+      <Setter Property="Padding" Value="16,8"/>
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Button.SavePill">
+      <Setter Property="Background" Value="#F7F7F7"/>
+      <Setter Property="Foreground" Value="#333333"/>
+      <Setter Property="BorderBrush" Value="#D0D0D0"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="10"/>
+    </Style>
+    <Style Selector="Button.SendPill">
+      <Setter Property="Background" Value="#F3C7BC"/>
+      <Setter Property="Foreground" Value="#5A2E26"/>
+      <Setter Property="CornerRadius" Value="10"/>
+    </Style>
+    <Style Selector="Button.SendPill:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#EBB3A6"/>
+    </Style>
+
+    <Style Selector="Border.Card">
+      <Setter Property="Width" Value="260"/>
+      <Setter Property="Height" Value="320"/>
+      <Setter Property="Margin" Value="0,0,16,16"/>
+      <Setter Property="Background" Value="#FFFFFF"/>
+      <Setter Property="BorderBrush" Value="#BDBDBD"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="10"/>
+    </Style>
+    <Style Selector="Border.Card:pointerover">
+      <Setter Property="BorderBrush" Value="#8FC3E3"/>
+    </Style>
+    <Style Selector="Button.TabRow">
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+      <Setter Property="HorizontalContentAlignment" Value="Left"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="Padding" Value="4,5"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Button.TabRow:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#C0DBF3"/>
+    </Style>
+    <Style Selector="Button.MenuButton">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Width" Value="28"/>
+      <Setter Property="Height" Value="28"/>
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="CornerRadius" Value="14"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+  </UserControl.Styles>
+
+  <Border CornerRadius="16" BorderBrush="#D8D8D8" BorderThickness="1" Margin="8" Background="#F3F3F3" ClipToBounds="True">
+    <Border.Effect>
+      <DropShadowDirectionEffect ShadowDepth="2" BlurRadius="10" Color="#18000000" />
+    </Border.Effect>
+    <Grid>
+      <Grid RowDefinitions="Auto,*,Auto" Margin="24,16,8,12">
+        <TextBlock Grid.Row="0" Text="NexZen workspace" FontSize="24" FontWeight="Bold" Foreground="#2A2A2A" Margin="0,0,0,14"/>
+
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+          <ItemsControl ItemsSource="{Binding Tiles}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel Orientation="Horizontal" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.DataTemplates>
+              <DataTemplate DataType="vm:AddWorkspaceTile">
+                <Border Classes="Card" Cursor="Hand" ToolTip.Tip="Create a workspace"
+                        PointerReleased="AddNew_PointerReleased">
+                  <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="18">
+                    <Border Width="116" Height="116" CornerRadius="14" BorderBrush="#333333" BorderThickness="2" HorizontalAlignment="Center">
+                      <PathIcon Data="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z" Width="56" Height="56" Foreground="#333333" />
+                    </Border>
+                    <TextBlock Text="Add new" FontSize="26" FontWeight="SemiBold" Foreground="#2A2A2A" HorizontalAlignment="Center"/>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+
+              <DataTemplate DataType="vm:WorkspaceCardViewModel">
+                <Border Classes="Card" Padding="8,6,8,8" Cursor="Hand" PointerReleased="Card_PointerReleased"
+                        BorderBrush="{Binding Color, Converter={StaticResource HexToBrushConverter}, ConverterParameter=#BDBDBD}"
+                        BorderThickness="{Binding Color, Converter={StaticResource HexToThicknessConverter}, ConverterParameter='3,1'}">
+                  <Grid RowDefinitions="Auto,*">
+                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,6">
+                      <TextBlock Text="{Binding Name}" FontSize="16" Foreground="#2A2A2A"
+                                 TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                      <Button Grid.Column="1" Classes="MenuButton" ToolTip.Tip="Workspace menu" Margin="6,0,0,0">
+                        <PathIcon Data="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z" Width="18" Height="18" Foreground="#2F80C9"/>
+                        <Button.Flyout>
+                          <MenuFlyout Placement="BottomEdgeAlignedRight" Opened="CardMenu_Opened" Closed="CardMenu_Closed">
+                            <MenuItem Header="Add this tab"
+                                      Command="{Binding Owner.AddThisTabCommand}"
+                                      CommandParameter="{Binding}"/>
+                            <MenuItem Header="Update"
+                                      Command="{Binding Owner.UpdateCommand}"
+                                      CommandParameter="{Binding}"/>
+                            <MenuItem Header="Delete"
+                                      Command="{Binding Owner.AskDeleteCommand}"
+                                      CommandParameter="{Binding}"/>
+                          </MenuFlyout>
+                        </Button.Flyout>
+                      </Button>
+                    </Grid>
+
+                    <TextBlock Grid.Row="1" IsVisible="{Binding IsEmpty}" Text="No tabs yet. Use the menu to add one."
+                               Foreground="#8A8A8A" FontSize="13" TextWrapping="Wrap" Margin="4,8,4,0"/>
+                    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                      <ItemsControl ItemsSource="{Binding Tabs}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:WorkspaceTabItem">
+                            <Button Classes="TabRow" ToolTip.Tip="{Binding Url}"
+                                    Command="{Binding $parent[UserControl].((vm:WorkspaceViewModel)DataContext).OpenTabCommand}"
+                                    CommandParameter="{Binding}">
+                              <Grid ColumnDefinitions="22,*">
+                                <Image Source="{Binding FaviconUrl, Converter={StaticResource DataUrlToBitmapConverter}}"
+                                       Width="18" Height="18" VerticalAlignment="Center"/>
+                                <PathIcon IsVisible="{Binding FaviconUrl, Converter={x:Static StringConverters.IsNullOrEmpty}}"
+                                          Data="M17.9,17.39C17.64,16.59 16.89,16 16,16H15V13A1,1 0 0,0 14,12H8V10H10A1,1 0 0,0 11,9V7H13A2,2 0 0,0 15,5V4.59C17.93,5.77 20,8.64 20,12C20,14.08 19.2,15.97 17.9,17.39M11,19.93C7.05,19.44 4,16.08 4,12C4,11.38 4.08,10.78 4.21,10.21L9,15V16A2,2 0 0,0 11,18M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"
+                                          Width="16" Height="16" Foreground="#888888" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Text="{Binding Title}" FontSize="15" Foreground="#2A2A2A"
+                                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                              </Grid>
+                            </Button>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </ScrollViewer>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.DataTemplates>
+          </ItemsControl>
+        </ScrollViewer>
+
+        <TextBlock Grid.Row="2" Text="{Binding StatusText}" Foreground="#4A4A4A" FontSize="13" Margin="0,6,0,0"
+                   IsVisible="{Binding StatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+      </Grid>
+
+      <!-- Delete confirmation, same look as the AI Function confirm overlay. -->
+      <Border IsVisible="{Binding IsConfirmOpen}" Background="#66000000" CornerRadius="16">
+        <Border Background="#F3F3F3" BorderBrush="#D8D8D8" BorderThickness="1" CornerRadius="16" Padding="20"
+                Width="420" HorizontalAlignment="Center" VerticalAlignment="Center">
+          <StackPanel Spacing="14">
+            <TextBlock Text="Delete workspace" FontWeight="Bold" FontSize="16" Foreground="#2A2A2A"/>
+            <TextBlock Text="{Binding ConfirmMessage}" FontSize="14" Foreground="#4A4A4A" TextWrapping="Wrap"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+              <Button Classes="Pill SavePill" Content="Cancel" Command="{Binding CancelDeleteCommand}"/>
+              <Button Classes="Pill SendPill" Content="Delete" Command="{Binding ConfirmDeleteCommand}"/>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+      </Border>
+    </Grid>
+  </Border>
+</UserControl>
