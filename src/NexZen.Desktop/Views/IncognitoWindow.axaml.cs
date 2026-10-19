@@ -234,6 +234,14 @@ public partial class IncognitoWindow : Window
             return;
         }
 
+        if (MainWindow.IsNewTabChord(e))
+        {
+            e.Handled = true;
+            AddTab("about:blank");
+            AddressBox.Focus();
+            return;
+        }
+
         if (e.Key == Key.I && MainWindow.IsCtrlOrCmdShiftChord(mods))
         {
             e.Handled = true;

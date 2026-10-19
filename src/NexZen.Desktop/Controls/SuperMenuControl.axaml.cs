@@ -431,6 +431,16 @@ public partial class SuperMenuControl : UserControl
         UpdateToolsVisibility();
     }
 
+    /// <summary>Paste is only offered when the clipboard has something to paste.</summary>
+    public void SetPasteVisible(bool visible)
+    {
+        var button = this.FindControl<Button>("PasteMenuButton");
+        if (button == null || button.IsVisible == visible)
+            return;
+        button.IsVisible = visible;
+        LayoutChanged?.Invoke(this, EventArgs.Empty);
+    }
+
     public void SetOpenInNewTabVisible(bool visible)
     {
         var button = this.FindControl<Button>("OpenInNewTabButton");

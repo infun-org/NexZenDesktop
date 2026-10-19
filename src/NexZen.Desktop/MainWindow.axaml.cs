@@ -362,6 +362,7 @@ public partial class MainWindow : Window
                 }
             }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             this.AddHandler(InputElement.KeyDownEvent, OnReopenClosedTabKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+            this.AddHandler(InputElement.KeyDownEvent, OnNewTabKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             this.AddHandler(InputElement.KeyDownEvent, OnNewIncognitoKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             this.AddHandler(InputElement.KeyDownEvent, OnPrintKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             this.AddHandler(InputElement.KeyDownEvent, OnAiFunctionKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
@@ -3242,6 +3243,8 @@ public partial class MainWindow : Window
             _superMenuControl.ResetToMainMenu();
             _superMenuControl.SetSaveImageVisible(copy.IsImage);
             _superMenuControl.SetOpenInNewTabVisible(NewTabTarget(copy) != null);
+            _superMenuControl.SetPasteVisible(false);
+            _ = UpdatePasteVisibilityAsync();
             _superMenuControl.SetOpenInNewWindowVisible(CanOpenInNewWindow(copy));
             _superMenuControl.SetOpenOnPinnedWindowVisible(true);
             _superMenuControl.SetMuteTabLabel(GetActiveTabState()?.AudioMuted == true);
@@ -3283,6 +3286,7 @@ public partial class MainWindow : Window
             _menuWindow.AddHandler(KeyDownEvent, OnEditKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             _menuWindow.AddHandler(KeyDownEvent, OnBrowserZoomKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             _menuWindow.AddHandler(KeyDownEvent, OnReopenClosedTabKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+            _menuWindow.AddHandler(KeyDownEvent, OnNewTabKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             _menuWindow.AddHandler(KeyDownEvent, OnNewIncognitoKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             _menuWindow.AddHandler(KeyDownEvent, OnPrintKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             _menuWindow.AddHandler(KeyDownEvent, OnAiFunctionKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
@@ -3524,6 +3528,19 @@ public partial class MainWindow : Window
                 result = await DownloadPageImageAsync(image.ImageUrl!);
         });
         return result is { Length: > 0 } ? result : null;
+    }
+
+    /// <summary>Ctrl+N or Cmd+N (exactly, so Ctrl+Shift+N stays the incognito window) opens a new tab.</summary>
+    internal static bool IsNewTabChord(KeyEventArgs e)
+        => e.Key == Key.N && (e.KeyModifiers == KeyModifiers.Control || e.KeyModifiers == KeyModifiers.Meta);
+
+    private void OnNewTabKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (!IsNewTabChord(e))
+            return;
+        e.Handled = true;
+        CloseSuperMenu();
+        _viewModel?.AddTab("about:blank");
     }
 
     private void OnReopenClosedTabKeyDown(object? sender, KeyEventArgs e)
@@ -3830,6 +3847,30 @@ public partial class MainWindow : Window
         if (cefBrowser == null)
             return null;
         return cefBrowser.GetFocusedFrame() ?? cefBrowser.GetMainFrame();
+    }
+
+    // The clipboard is read after the menu opens, so a slow clipboard owner doesn't delay it.
+    private async Task UpdatePasteVisibilityAsync()
+    {
+        var hasContent = false;
+        try
+        {
+            if (Clipboard != null)
+            {
+                var formats = await Clipboard.GetDataFormatsAsync();
+                if (formats.Any(f => f.Identifier.StartsWith("image/", StringComparison.OrdinalIgnoreCase)
+                                     || Equals(f, DataFormat.Bitmap)))
+                    hasContent = true;
+                else if (formats.Any(f => Equals(f, DataFormat.Text)))
+                    hasContent = !string.IsNullOrEmpty(await Clipboard.TryGetTextAsync());
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Paste] clipboard check: {ex.Message}");
+        }
+        if (_menuWindow != null)
+            _superMenuControl.SetPasteVisible(hasContent);
     }
 
     private async Task<(string? Text, Bitmap? Image)> ReadClipboardAsync()
