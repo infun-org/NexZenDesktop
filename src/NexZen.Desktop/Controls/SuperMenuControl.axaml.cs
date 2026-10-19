@@ -56,6 +56,7 @@ public partial class SuperMenuControl : UserControl
     public event EventHandler? MuteTabRequested;
     public event EventHandler? InspectRequested;
     public event EventHandler? PageViewRequested;
+    public event EventHandler? SitePrivacyRequested;
     public event EventHandler? CreateQrRequested;
     public event EventHandler? CustomCssRequested;
     public event EventHandler? AiFunctionRequested;
@@ -405,6 +406,9 @@ public partial class SuperMenuControl : UserControl
         var responsiveTools = this.FindControl<Button>("ResponsiveToolsButton");
         if (responsiveTools != null)
             responsiveTools.IsVisible = _toolsExpanded;
+        var sitePrivacy = this.FindControl<Button>("SitePrivacyButton");
+        if (sitePrivacy != null)
+            sitePrivacy.IsVisible = _toolsExpanded;
         var newIncognito = this.FindControl<Button>("NewIncognitoButton");
         if (newIncognito != null)
             newIncognito.IsVisible = _toolsExpanded;
@@ -599,6 +603,11 @@ public partial class SuperMenuControl : UserControl
     private void CustomCssButton_Click(object? sender, RoutedEventArgs e)
     {
         CustomCssRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void SitePrivacyButton_Click(object? sender, RoutedEventArgs e)
+    {
+        SitePrivacyRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void PageViewButton_Click(object? sender, RoutedEventArgs e)

@@ -505,6 +505,13 @@ public partial class MainWindow : Window
             CloseSuperMenu();
             OpenDevTools(copy?.X ?? 0, copy?.Y ?? 0);
         };
+        _superMenuControl.SitePrivacyRequested += (_, _) =>
+        {
+            CloseSuperMenu();
+            var tab = _viewModel?.ActiveTab;
+            if (Avalonia.Application.Current is App app)
+                app.ShowSitePrivacyWindow(this, tab?.Url, tab?.FaviconPng);
+        };
         _superMenuControl.PageViewRequested += (_, _) =>
         {
             CloseSuperMenu();

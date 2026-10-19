@@ -194,6 +194,24 @@ public partial class App : Avalonia.Application
     private NexZen.Desktop.Views.CustomCssWindow? _customCssWindow;
 
     /// <summary>Opens the pinned Custom CSS window for a page's site; Save reloads that tab.</summary>
+    private NexZen.Desktop.Views.SitePrivacyWindow? _sitePrivacyWindow;
+
+    /// <summary>"Site privacy" for the page; one window, refreshed for the current page.</summary>
+    public void ShowSitePrivacyWindow(Window owner, string? pageUrl, byte[]? faviconPng)
+    {
+        if (ServiceProvider?.GetService<SitePrivacyViewModel>() is not { } privacy)
+            return;
+        privacy.Load(pageUrl, faviconPng);
+        if (_sitePrivacyWindow == null)
+        {
+            _sitePrivacyWindow = new NexZen.Desktop.Views.SitePrivacyWindow { DataContext = privacy };
+            _sitePrivacyWindow.Closed += (_, _) => _sitePrivacyWindow = null;
+            privacy.CloseRequested = () => _sitePrivacyWindow?.Close();
+            _sitePrivacyWindow.Show(owner);
+        }
+        _sitePrivacyWindow.Activate();
+    }
+
     public void ShowCustomCssWindow(string pageUrl, Action reloadTab)
     {
         if (ServiceProvider?.GetService<CustomCssViewModel>() is not { } editor || !editor.Load(pageUrl))
@@ -414,6 +432,7 @@ public partial class App : Avalonia.Application
         services.AddSingleton<NexZen.Application.Services.CustomStyleStore>();
         services.AddSingleton<CustomCssViewModel>();
         services.AddSingleton<PrintViewModel>();
+        services.AddSingleton<SitePrivacyViewModel>();
 
         // 3. NexShare Services
         services.AddSingleton<INexShareCrypto, NexShareCrypto>();
