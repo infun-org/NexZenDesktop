@@ -253,6 +253,14 @@ namespace Xilium.CefGlue.Common
         }
 
         public void ShowDeveloperTools(int inspectX = 0, int inspectY = 0)
+            => ShowDeveloperTools(inspectX, inspectY, null);
+
+        /// <summary>
+        /// Opens DevTools in their own window; <paramref name="bounds"/> (screen pixels) places it,
+        /// e.g. beside the app window. When DevTools are open already they are focused and the
+        /// element at the point is inspected.
+        /// </summary>
+        public void ShowDeveloperTools(int inspectX, int inspectY, CefRectangle? bounds)
         {
             var windowInfo = CefWindowInfo.Create();
 
@@ -264,7 +272,7 @@ namespace Xilium.CefGlue.Common
             else
             {
                 windowInfo.Name = "DevTools";
-                windowInfo.Bounds = new CefRectangle(80, 60, 1200, 800);
+                windowInfo.Bounds = bounds ?? new CefRectangle(80, 60, 1200, 800);
                 windowInfo.WindowlessRenderingEnabled = false;
             }
 
@@ -275,6 +283,8 @@ namespace Xilium.CefGlue.Common
         {
             BrowserHost?.CloseDevTools();
         }
+
+        public bool HasDeveloperTools => BrowserHost?.HasDevTools == true;
 
         public void RegisterJavascriptObject(object targetObject, string name, MethodCallHandler methodHandler = null)
         {
@@ -495,7 +505,10 @@ namespace Xilium.CefGlue.Common
 
         protected virtual bool OnBrowserClose(CefBrowser browser)
         {
-            if (browser.IsPopup)
+            // DevTools share this adapter's CefClient, so their close arrives here too. On Linux
+            // the DevTools browser is not flagged IsPopup; tearing down on its close destroyed the
+            // inspected page and left a blank tab. Only our own browser cleans up.
+            if (browser.IsPopup || !IsOwnBrowser(browser))
             {
                 // popup such as devtools, let it close its window
                 return false;
@@ -541,9 +554,15 @@ namespace Xilium.CefGlue.Common
         {
             WithErrorHandling((nameof(ICefBrowserHost.HandleBrowserDestroyed)), () =>
             {
+                if (!IsOwnBrowser(browser))
+                    return;
                 _objectMethodDispatcher = null;
             });
         }
+
+        // _browser is null once Cleanup ran; a close then is still ours.
+        private bool IsOwnBrowser(CefBrowser browser)
+            => _browser == null || _browser.IsSame(browser);
 
         bool ICefBrowserHost.HandleBrowserClose(CefBrowser browser)
         {
@@ -584,7 +603,7 @@ namespace Xilium.CefGlue.Common
 
         void ICefBrowserHost.HandleTitleChange(CefBrowser browser, string title)
         {
-            if (browser.IsPopup)
+            if (browser.IsPopup || !IsOwnBrowser(browser))
             {
                 return;
             }

@@ -350,6 +350,13 @@ namespace Xilium.CefGlue.Common
             _adapter.CloseDeveloperTools();
         }
 
+        /// <summary>Opens DevTools in their own window at <paramref name="bounds"/> (screen pixels).</summary>
+        public void ShowDeveloperTools(int inspectX, int inspectY, CefRectangle bounds)
+            => _adapter.ShowDeveloperTools(inspectX, inspectY, bounds);
+
+        /// <summary>True while DevTools are open for this browser.</summary>
+        public bool HasDeveloperTools => _adapter.HasDeveloperTools;
+
         /// <summary>
         /// Registers a Javascript object in this browser instance.
         /// </summary>

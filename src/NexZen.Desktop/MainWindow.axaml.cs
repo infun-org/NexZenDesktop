@@ -363,6 +363,7 @@ public partial class MainWindow : Window
             }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             this.AddHandler(InputElement.KeyDownEvent, OnReopenClosedTabKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             this.AddHandler(InputElement.KeyDownEvent, OnNewTabKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+            this.AddHandler(InputElement.KeyDownEvent, OnDevToolsKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             this.AddHandler(InputElement.KeyDownEvent, OnNewIncognitoKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             this.AddHandler(InputElement.KeyDownEvent, OnPrintKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             this.AddHandler(InputElement.KeyDownEvent, OnAiFunctionKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
@@ -500,10 +501,9 @@ public partial class MainWindow : Window
         _superMenuControl.MuteTabRequested += (_, _) => ToggleMuteActiveTab();
         _superMenuControl.InspectRequested += (_, _) =>
         {
-            var browser = GetActiveTabState()?.Browser;
             var copy = _copyContext;
             CloseSuperMenu();
-            browser?.ShowDeveloperTools(copy?.X ?? 0, copy?.Y ?? 0);
+            OpenDevTools(copy?.X ?? 0, copy?.Y ?? 0);
         };
         _superMenuControl.PageViewRequested += (_, _) =>
         {
@@ -3287,6 +3287,7 @@ public partial class MainWindow : Window
             _menuWindow.AddHandler(KeyDownEvent, OnBrowserZoomKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             _menuWindow.AddHandler(KeyDownEvent, OnReopenClosedTabKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             _menuWindow.AddHandler(KeyDownEvent, OnNewTabKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+            _menuWindow.AddHandler(KeyDownEvent, OnDevToolsKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             _menuWindow.AddHandler(KeyDownEvent, OnNewIncognitoKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             _menuWindow.AddHandler(KeyDownEvent, OnPrintKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             _menuWindow.AddHandler(KeyDownEvent, OnAiFunctionKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);

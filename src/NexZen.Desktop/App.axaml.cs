@@ -521,7 +521,10 @@ public partial class App : Avalonia.Application
 
         base.OnFrameworkInitializationCompleted();
 #if DEBUG
-        this.AttachDeveloperTools();
+        // F12 belongs to the page DevTools; keep the Avalonia inspector on Ctrl+Alt+F12.
+        this.AttachDeveloperTools(options =>
+            options.Gesture = new Avalonia.Input.KeyGesture(
+                Avalonia.Input.Key.F12, Avalonia.Input.KeyModifiers.Control | Avalonia.Input.KeyModifiers.Alt));
 #endif
     }
 
