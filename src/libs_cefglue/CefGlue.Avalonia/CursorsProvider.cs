@@ -1,5 +1,6 @@
 ﻿using Avalonia.Input;
 using System.Collections.Generic;
+using Avalonia.Threading;
 
 namespace Xilium.CefGlue.Avalonia
 {
@@ -25,36 +26,36 @@ namespace Xilium.CefGlue.Avalonia
             { CefCursorType.WestResize, StandardCursorType.LeftSide },
             { CefCursorType.NorthSouthResize, StandardCursorType.SizeNorthSouth },
             { CefCursorType.EastWestResize, StandardCursorType.SizeWestEast },
-            { CefCursorType.NorthEastSouthWestResize, StandardCursorType.None },
-            { CefCursorType.NorthWestSouthEastResize, StandardCursorType.None },
+            { CefCursorType.NorthEastSouthWestResize, StandardCursorType.TopRightCorner },
+            { CefCursorType.NorthWestSouthEastResize, StandardCursorType.TopLeftCorner },
             { CefCursorType.ColumnResize, StandardCursorType.SizeWestEast },
             { CefCursorType.RowResize, StandardCursorType.SizeNorthSouth },
-            { CefCursorType.MiddlePanning, StandardCursorType.None },
-            { CefCursorType.EastPanning, StandardCursorType.None },
-            { CefCursorType.NorthPanning, StandardCursorType.None },
-            { CefCursorType.NorthEastPanning, StandardCursorType.None },
-            { CefCursorType.NorthWestPanning, StandardCursorType.None },
-            { CefCursorType.SouthPanning, StandardCursorType.None },
-            { CefCursorType.SouthEastPanning, StandardCursorType.None },
-            { CefCursorType.SouthWestPanning, StandardCursorType.None },
-            { CefCursorType.WestPanning, StandardCursorType.None },
+            { CefCursorType.MiddlePanning, StandardCursorType.SizeAll },
+            { CefCursorType.EastPanning, StandardCursorType.RightSide },
+            { CefCursorType.NorthPanning, StandardCursorType.TopSide },
+            { CefCursorType.NorthEastPanning, StandardCursorType.TopRightCorner },
+            { CefCursorType.NorthWestPanning, StandardCursorType.TopLeftCorner },
+            { CefCursorType.SouthPanning, StandardCursorType.BottomSide },
+            { CefCursorType.SouthEastPanning, StandardCursorType.BottomRightCorner },
+            { CefCursorType.SouthWestPanning, StandardCursorType.BottomLeftCorner },
+            { CefCursorType.WestPanning, StandardCursorType.LeftSide },
             { CefCursorType.Move, StandardCursorType.SizeAll },
-            { CefCursorType.VerticalText, StandardCursorType.None },
-            { CefCursorType.Cell, StandardCursorType.None },
-            { CefCursorType.ContextMenu, StandardCursorType.None },
-            { CefCursorType.Alias, StandardCursorType.None },
-            { CefCursorType.Progress, StandardCursorType.None },
+            { CefCursorType.VerticalText, StandardCursorType.Ibeam },
+            { CefCursorType.Cell, StandardCursorType.Cross },
+            { CefCursorType.ContextMenu, StandardCursorType.Arrow },
+            { CefCursorType.Alias, StandardCursorType.DragLink },
+            { CefCursorType.Progress, StandardCursorType.AppStarting },
             { CefCursorType.NoDrop, StandardCursorType.No },
-            { CefCursorType.Copy, StandardCursorType.None },
+            { CefCursorType.Copy, StandardCursorType.DragCopy },
             { CefCursorType.None, StandardCursorType.None },
             { CefCursorType.NotAllowed, StandardCursorType.No },
-            { CefCursorType.ZoomIn, StandardCursorType.None },
-            { CefCursorType.ZoomOut, StandardCursorType.None },
+            { CefCursorType.ZoomIn, StandardCursorType.Arrow },
+            { CefCursorType.ZoomOut, StandardCursorType.Arrow },
             { CefCursorType.Grab, StandardCursorType.Hand },
             { CefCursorType.Grabbing, StandardCursorType.Hand },
-            { CefCursorType.MiddlePanningVertical, StandardCursorType.None },
-            { CefCursorType.MiddlePanningHorizontal, StandardCursorType.None },
-            { CefCursorType.Custom, StandardCursorType.None },
+            { CefCursorType.MiddlePanningVertical, StandardCursorType.SizeNorthSouth },
+            { CefCursorType.MiddlePanningHorizontal, StandardCursorType.SizeWestEast },
+            { CefCursorType.Custom, StandardCursorType.Arrow },
             { CefCursorType.DragAndDropNone, StandardCursorType.No },
             { CefCursorType.DragAndDropMove, StandardCursorType.DragMove },
             { CefCursorType.DragAndDropCopy, StandardCursorType.DragCopy },
@@ -67,22 +68,32 @@ namespace Xilium.CefGlue.Avalonia
             { CefDragOperationsMask.Move, StandardCursorType.DragMove }
         };
 
-        public static Cursor GetCursorFromCefType(CefCursorType cursorType)
+        // Avalonia cursors wrap native (X11) cursor handles: create each kind once, and only on the
+        // UI thread. CEF reports cursor changes on its own thread; creating them there called into
+        // the X11 connection from a second thread and left every window with the default arrow.
+        private static readonly Dictionary<StandardCursorType, Cursor> _cache = new();
+
+        private static Cursor Get(StandardCursorType type)
         {
-            if (_cefCursorTypeToAvaloniaMap.TryGetValue(cursorType, out var avaloniaCursor))
+            Dispatcher.UIThread.VerifyAccess();
+            if (!_cache.TryGetValue(type, out var cursor))
             {
-                return new Cursor(avaloniaCursor);
+                cursor = new Cursor(type);
+                _cache[type] = cursor;
             }
-            return Cursor.Default;
+            return cursor;
         }
 
+        /// <summary>The cursor for a CEF cursor type. UI thread only.</summary>
+        public static Cursor GetCursorFromCefType(CefCursorType cursorType)
+            => Get(_cefCursorTypeToAvaloniaMap.TryGetValue(cursorType, out var avaloniaCursor)
+                ? avaloniaCursor
+                : StandardCursorType.Arrow);
+
+        /// <summary>The drag cursor for the allowed drop operations. UI thread only.</summary>
         public static Cursor GetCursorFromCefType(CefDragOperationsMask ops)
-        {
-            if (_cefDragOpsToAvaloniaMap.TryGetValue(ops, out var avaloniaCursor))
-            {
-                return new Cursor(avaloniaCursor);
-            }
-            return new Cursor(StandardCursorType.No);
-        }
+            => Get(_cefDragOpsToAvaloniaMap.TryGetValue(ops, out var avaloniaCursor)
+                ? avaloniaCursor
+                : StandardCursorType.No);
     }
 }

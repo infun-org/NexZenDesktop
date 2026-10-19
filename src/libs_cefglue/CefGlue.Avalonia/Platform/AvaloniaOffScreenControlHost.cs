@@ -7,6 +7,7 @@ using Avalonia;
 using Avalonia.Collections;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.VisualTree;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
@@ -131,6 +132,7 @@ namespace Xilium.CefGlue.Avalonia.Platform
             // only checks the hit-tested element, so OS drags over the page found no target.
             DragDrop.SetAllowDrop(viewbox, true);
             DragDrop.SetAllowDrop(image, true);
+            _cursorTarget = image;
             SetContent(viewbox);
             RenderSurface = new AvaloniaRenderSurface(image);
         }
@@ -288,7 +290,7 @@ namespace Xilium.CefGlue.Avalonia.Platform
 
         private void OnDrop(object sender, DragEventArgs e)
         {
-            _control.Cursor = _previousCursor; // restore cursor
+            ApplyCursor(_previousCursor); // restore cursor
             var offeredEffects = e.DragEffects;
             var effects = PrepareDropEffects(e);
             Console.WriteLine($"[CEF-DND] Avalonia drop offered={offeredEffects} accepted={effects} files={e.DataTransfer.TryGetFiles()?.Length ?? 0} bitmap={e.DataTransfer.TryGetBitmap() != null} text={!string.IsNullOrEmpty(e.DataTransfer.TryGetText())}");
@@ -306,7 +308,7 @@ namespace Xilium.CefGlue.Avalonia.Platform
                 Console.WriteLine($"[CEF-DND] Avalonia over accepted={effects}");
             }
             DragOver?.Invoke(e.AsCefMouseEvent(MousePositionReferential), effects.AsCefDragOperationsMask());
-            _control.Cursor = _currentDragCursor;
+            ApplyCursor(_currentDragCursor);
         }
 
         private void OnDragLeave(object sender, RoutedEventArgs e)
@@ -578,13 +580,24 @@ namespace Xilium.CefGlue.Avalonia.Platform
 
         public void UpdateDragCursor(CefDragOperationsMask allowedOps)
         {
-            _currentDragCursor = CursorsProvider.GetCursorFromCefType(allowedOps);
+            // Called on a CEF thread; cursors are made on the UI thread.
+            Dispatcher.UIThread.Post(() => _currentDragCursor = CursorsProvider.GetCursorFromCefType(allowedOps));
         }
+
+        // Avalonia uses the cursor of the element under the pointer and does not inherit it, so the
+        // page image that receives the pointer must carry it as well as the browser control.
+        private void ApplyCursor(Cursor cursor)
+        {
+            _control.Cursor = cursor;
+            if (_cursorTarget != null) _cursorTarget.Cursor = cursor;
+        }
+
+        private Control _cursorTarget;
 
         public override bool SetCursor(IntPtr cursorHandle, CefCursorType cursorType)
         {
-            var cursor = CursorsProvider.GetCursorFromCefType(cursorType);
-            Dispatcher.UIThread.Post(() => _control.Cursor = cursor);
+            // Called on a CEF thread: look the cursor up on the UI thread.
+            Dispatcher.UIThread.Post(() => ApplyCursor(CursorsProvider.GetCursorFromCefType(cursorType)));
             return true;
         }
 
