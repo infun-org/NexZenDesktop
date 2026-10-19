@@ -1,0 +1,188 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:NexZen.Application.ViewModels"
+        xmlns:conv="using:NexZen.Desktop.Converters"
+        x:Class="NexZen.Desktop.Views.PrintWindow"
+        x:DataType="vm:PrintViewModel"
+        Width="1060" Height="800" MinWidth="760" MinHeight="560"
+        Title="{Binding Title}"
+        Icon="avares://NexZen.Desktop/Assets/icon64.ico"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
+        WindowDecorations="None"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+  <Window.Resources>
+    <conv:FilePathToBitmapConverter x:Key="FileBitmap"/>
+  </Window.Resources>
+  <Window.Styles>
+    <Style Selector="Button.YellowPill">
+      <Setter Property="Background" Value="#FCEFB4"/>
+      <Setter Property="BorderBrush" Value="#E2CC6B"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Foreground" Value="#4A3D10"/>
+      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="Padding" Value="26,6"/>
+      <Setter Property="FontSize" Value="15"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Button.YellowPill:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#F7E595"/>
+    </Style>
+    <Style Selector="Button.Plain">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="Padding" Value="18,6"/>
+      <Setter Property="FontSize" Value="15"/>
+      <Setter Property="Foreground" Value="#444444"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="TextBlock.Label">
+      <Setter Property="Foreground" Value="#555555"/>
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="ComboBox, NumericUpDown, TextBox">
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+      <Setter Property="Margin" Value="0,3"/>
+    </Style>
+    <Style Selector="TextBlock.Section">
+      <Setter Property="Foreground" Value="#2A2A2A"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Margin" Value="0,12,0,2"/>
+    </Style>
+    <Style Selector="CheckBox">
+      <Setter Property="Margin" Value="0,1"/>
+      <Setter Property="FontSize" Value="14"/>
+    </Style>
+    <Style Selector="NumericUpDown.Small">
+      <Setter Property="Margin" Value="0,3,6,3"/>
+    </Style>
+  </Window.Styles>
+
+  <Border CornerRadius="16" BorderBrush="#D8D8D8" BorderThickness="1" Margin="8" Background="#F3F3F3"
+          PointerPressed="Background_PointerPressed">
+    <Border.Effect>
+      <DropShadowDirectionEffect ShadowDepth="2" BlurRadius="10" Color="#18000000" />
+    </Border.Effect>
+    <Grid ColumnDefinitions="*,470">
+    <!-- Preview: the pages as they will come out, rebuilt shortly after each change. -->
+    <Border Grid.Column="0" Background="#E2E2E2" CornerRadius="12" Margin="10,10,0,10">
+      <Grid RowDefinitions="*,Auto">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" Padding="20,16">
+          <ItemsControl ItemsSource="{Binding PreviewPages}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="x:String">
+                <Border Background="White" Margin="0,0,0,18" HorizontalAlignment="Center" BoxShadow="0 1 6 0 #33000000">
+                  <Image Source="{Binding Converter={StaticResource FileBitmap}}" Stretch="Uniform" MaxWidth="520"/>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="14,6,14,10">
+          <TextBlock Text="{Binding PreviewStatus}" Foreground="#555555" FontSize="13" VerticalAlignment="Center"
+                     TextTrimming="CharacterEllipsis"/>
+          <ProgressBar Grid.Column="1" IsIndeterminate="True" Width="80" MinWidth="80" Height="4"
+                       IsVisible="{Binding IsPreviewBusy}" VerticalAlignment="Center"/>
+        </Grid>
+      </Grid>
+    </Border>
+
+    <StackPanel Grid.Column="1" Margin="16,10,16,14" Spacing="4">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Text="{Binding Title}" FontSize="17" Foreground="#2A2A2A" VerticalAlignment="Center"/>
+        <Button Grid.Column="1" Background="Transparent" BorderThickness="0" Padding="6" CornerRadius="12"
+                Cursor="Hand" VerticalAlignment="Center" ToolTip.Tip="Close (Esc)" Command="{Binding CancelCommand}">
+          <PathIcon Data="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"
+                    Width="12" Height="12" Foreground="#666666"/>
+        </Button>
+      </Grid>
+      <TextBlock Text="{Binding Subject}" Foreground="#777777" FontSize="13" TextTrimming="CharacterEllipsis"
+                 Margin="0,0,0,8" IsVisible="{Binding Subject, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+      <ScrollViewer MaxHeight="560" HorizontalScrollBarVisibility="Disabled" Padding="0,0,10,0">
+        <StackPanel>
+          <TextBlock Classes="Section" Text="Destination" Margin="0,0,0,2"/>
+          <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+            <TextBlock Classes="Label" Text="Printer"/>
+            <ComboBox Grid.Column="1" ItemsSource="{Binding Destinations}" SelectedItem="{Binding Destination}"/>
+            <TextBlock Grid.Row="1" Classes="Label" Text="Copies"/>
+            <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding Copies}" Minimum="1" Maximum="999"
+                           Increment="1" FormatString="0" IsEnabled="{Binding IsPrinter}"/>
+            <CheckBox Grid.Row="2" Grid.Column="1" Content="Collate" IsChecked="{Binding Collate}"
+                      IsVisible="{Binding ShowCollate}" IsEnabled="{Binding IsPrinter}"/>
+            <TextBlock Grid.Row="3" Classes="Label" Text="Pages" IsVisible="{Binding IsPage}"/>
+            <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Spacing="16" Margin="0,3"
+                        IsVisible="{Binding IsPage}">
+              <RadioButton GroupName="Pages" Content="All" IsChecked="{Binding AllPages}"/>
+              <RadioButton GroupName="Pages" Content="Custom" IsChecked="{Binding IsPageRange, Mode=OneWay}"
+                           Click="CustomPages_Click"/>
+            </StackPanel>
+            <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding PageRanges}" Watermark="e.g. 1-5, 8, 11-13"
+                     IsVisible="{Binding IsPageRange}"/>
+          </Grid>
+
+          <TextBlock Classes="Section" Text="Layout"/>
+          <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+            <TextBlock Classes="Label" Text="Orientation"/>
+            <ComboBox Grid.Column="1" ItemsSource="{Binding Orientations}" SelectedIndex="{Binding OrientationIndex}"/>
+            <TextBlock Grid.Row="1" Classes="Label" Text="Paper size"/>
+            <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding PaperSizes}" SelectedIndex="{Binding PaperIndex}"/>
+            <TextBlock Grid.Row="2" Classes="Label" Text="Pages per sheet"/>
+            <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding PagesPerSheetChoices}"
+                      SelectedIndex="{Binding PagesPerSheetIndex}" IsEnabled="{Binding IsPrinter}"/>
+            <TextBlock Grid.Row="3" Classes="Label" Text="Margins"/>
+            <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding MarginChoices}" SelectedIndex="{Binding MarginIndex}"/>
+            <Grid Grid.Row="4" Grid.Column="1" ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto"
+                  IsVisible="{Binding IsCustomMargins}">
+              <TextBlock Classes="Label" FontSize="12" Text="Top (mm)"/>
+              <TextBlock Grid.Column="1" Classes="Label" FontSize="12" Text="Bottom (mm)"/>
+              <NumericUpDown Grid.Row="1" Classes="Small" Value="{Binding MarginTop}" Minimum="0" Maximum="100" Increment="1" FormatString="0.#"/>
+              <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding MarginBottom}" Minimum="0" Maximum="100" Increment="1" FormatString="0.#"/>
+              <TextBlock Grid.Row="2" Classes="Label" FontSize="12" Text="Left (mm)"/>
+              <TextBlock Grid.Row="2" Grid.Column="1" Classes="Label" FontSize="12" Text="Right (mm)"/>
+              <NumericUpDown Grid.Row="3" Classes="Small" Value="{Binding MarginLeft}" Minimum="0" Maximum="100" Increment="1" FormatString="0.#"/>
+              <NumericUpDown Grid.Row="3" Grid.Column="1" Value="{Binding MarginRight}" Minimum="0" Maximum="100" Increment="1" FormatString="0.#"/>
+            </Grid>
+            <TextBlock Grid.Row="5" Classes="Label" Text="Scale (%)"/>
+            <NumericUpDown Grid.Row="5" Grid.Column="1" Value="{Binding Scale}" Minimum="10" Maximum="200"
+                           Increment="10" FormatString="0"/>
+          </Grid>
+
+          <TextBlock Classes="Section" Text="Options"/>
+          <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto">
+            <TextBlock Classes="Label" Text="Two-sided"/>
+            <ComboBox Grid.Column="1" ItemsSource="{Binding DuplexChoices}" SelectedIndex="{Binding DuplexIndex}"
+                      IsEnabled="{Binding IsPrinter}"/>
+            <TextBlock Grid.Row="1" Classes="Label" Text="Color"/>
+            <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding ColorChoices}" SelectedIndex="{Binding ColorIndex}"
+                      IsEnabled="{Binding IsPrinter}"/>
+          </Grid>
+          <StackPanel Margin="120,4,0,0" IsVisible="{Binding IsPage}">
+            <CheckBox Content="Background graphics" IsChecked="{Binding Backgrounds}"/>
+            <CheckBox Content="Headers and footers" IsChecked="{Binding HeadersAndFooters}"/>
+            <CheckBox Content="Use page size from the page's CSS" IsChecked="{Binding CssPageSize}"/>
+          </StackPanel>
+          <TextBlock Text="Copies, pages per sheet, two-sided and color are done by the printer, so they apply when printing, not to a saved PDF."
+                     Foreground="#888888" FontSize="12" TextWrapping="Wrap" Margin="0,10,0,0"
+                     IsVisible="{Binding !IsPrinter}"/>
+        </StackPanel>
+      </ScrollViewer>
+
+      <TextBlock Text="No printers found. Install CUPS and add a printer to print on paper."
+                 Foreground="#8A6D00" FontSize="13" TextWrapping="Wrap" Margin="0,6,0,0"
+                 IsVisible="{Binding NoPrinters}"/>
+      <TextBlock Text="{Binding StatusText}" Foreground="#4A4A4A" FontSize="13" TextWrapping="Wrap" Margin="0,6,0,0"
+                 IsVisible="{Binding StatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
+        <Button Classes="Plain" Content="Cancel" Command="{Binding CancelCommand}"/>
+        <Button Classes="YellowPill" Content="{Binding ActionLabel}" Command="{Binding PrintCommand}" IsDefault="True"/>
+      </StackPanel>
+    </StackPanel>
+    </Grid>
+  </Border>
+</Window>

@@ -363,6 +363,7 @@ public partial class MainWindow : Window
             }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             this.AddHandler(InputElement.KeyDownEvent, OnReopenClosedTabKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             this.AddHandler(InputElement.KeyDownEvent, OnNewIncognitoKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+            this.AddHandler(InputElement.KeyDownEvent, OnPrintKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             this.AddHandler(InputElement.KeyDownEvent, OnAiFunctionKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             this.AddHandler(InputElement.KeyDownEvent, OnWorkspaceKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             this.AddHandler(InputElement.KeyDownEvent, OnFindKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
@@ -570,6 +571,8 @@ public partial class MainWindow : Window
                 Console.WriteLine($"[Cut] {ex}");
             }
         };
+
+        _superMenuControl.PrintRequested += (_, _) => PrintFromMenu();
 
         _superMenuControl.PasteRequested += async (_, _) =>
         {
@@ -3281,6 +3284,7 @@ public partial class MainWindow : Window
             _menuWindow.AddHandler(KeyDownEvent, OnBrowserZoomKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             _menuWindow.AddHandler(KeyDownEvent, OnReopenClosedTabKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             _menuWindow.AddHandler(KeyDownEvent, OnNewIncognitoKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+            _menuWindow.AddHandler(KeyDownEvent, OnPrintKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             _menuWindow.AddHandler(KeyDownEvent, OnAiFunctionKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             _menuWindow.AddHandler(KeyDownEvent, OnWorkspaceKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             _menuWindow.AddHandler(KeyDownEvent, OnFindKeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
@@ -3365,6 +3369,161 @@ public partial class MainWindow : Window
             return;
         e.Handled = true;
         OpenIncognitoWindow();
+    }
+
+    private void OnPrintKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.P || e.KeyModifiers != KeyModifiers.Control)
+            return;
+        if (sender is TopLevel top && top.FocusManager?.GetFocusedElement() is TextBox)
+            return;
+        e.Handled = true;
+        var menuOpen = _menuWindow != null;
+        var copy = _copyContext;
+        CloseSuperMenu();
+        // From the open SuperMenu, Ctrl+P does what its Print item does.
+        StartPrint(menuOpen ? copy : null);
+    }
+
+    private void PrintFromMenu()
+    {
+        var copy = _copyContext;
+        CloseSuperMenu();
+        StartPrint(copy);
+    }
+
+    /// <summary>
+    /// Opens the print dialog for the active page, or for the image the menu was opened on.
+    /// The page goes through CEF's PDF output, an image through Skia; then lp or a saved file.
+    /// </summary>
+    private void StartPrint(PageCopyContext? copy)
+    {
+        var browser = ActionBrowser();
+        var host = browser?.GetBrowserHost();
+        var tab = _viewModel?.ActiveTab;
+        var pageUrl = browser?.Address ?? tab?.Url;
+        var image = copy is { IsImage: true } && !string.IsNullOrWhiteSpace(copy.ImageUrl) ? copy : null;
+        if (host == null || (image == null && !IsPrintablePage(pageUrl)))
+        {
+            ShowNotification("Print", "Open a web page first.", NotificationType.Warning);
+            return;
+        }
+        if (Avalonia.Application.Current is not App app)
+            return;
+
+        var title = tab?.Title;
+        var subject = image != null ? PageCopy.Preview(image.ImageUrl!) : (string.IsNullOrWhiteSpace(title) ? pageUrl ?? "" : title);
+        var fileName = PrintLayout.SuggestedFileName(image != null ? (title is { Length: > 0 } ? title + " - image" : null) : title,
+            image?.ImageUrl ?? pageUrl);
+
+        // The image is fetched once per dialog, for the preview and the print alike.
+        Task<byte[]?>? imageBytes = null;
+        // One PDF at a time: CEF's PrintToPdf can't run twice at once on a browser.
+        var pdfGate = new SemaphoreSlim(1, 1);
+        async Task<string?> MakePdfAsync(PrintOptions options, string target)
+        {
+            await pdfGate.WaitAsync();
+            try
+            {
+                if (image == null)
+                    return await PrintService.SavePagePdfAsync(host, target, options);
+                imageBytes ??= PrintImageBytesAsync(browser!, image);
+                var bytes = await imageBytes;
+                return bytes == null
+                    ? "Couldn't download this image from the page."
+                    : await PrintService.SaveImagePdfAsync(bytes, target, options);
+            }
+            finally
+            {
+                pdfGate.Release();
+            }
+        }
+
+        var previewFolder = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "nexzen-print-preview-" + Guid.NewGuid().ToString("N"));
+        async Task<PrintPreview> PreviewAsync(PrintOptions options, CancellationToken token)
+        {
+            var pdf = System.IO.Path.Combine(previewFolder, Guid.NewGuid().ToString("N") + ".pdf");
+            System.IO.Directory.CreateDirectory(previewFolder);
+            try
+            {
+                var error = await MakePdfAsync(options, pdf);
+                if (error != null)
+                    return new PrintPreview(Array.Empty<string>(), 0, error);
+                token.ThrowIfCancellationRequested();
+                // Color is done by the printer; show it grey only when that is what will come out.
+                return await PrintService.RenderPreviewAsync(pdf, previewFolder, options.Printer != null && !options.Color, token);
+            }
+            finally
+            {
+                try { System.IO.File.Delete(pdf); } catch { }
+            }
+        }
+
+        app.ShowPrintDialog(this, image != null, subject, PreviewAsync, previewFolder, async (options, dialog) =>
+        {
+            string? target;
+            if (options.Printer == null)
+            {
+                var file = await dialog.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+                {
+                    Title = "Save as PDF",
+                    SuggestedFileName = fileName,
+                    DefaultExtension = "pdf",
+                    FileTypeChoices = new[] { new FilePickerFileType("PDF document") { Patterns = new[] { "*.pdf" } } }
+                });
+                if (file == null)
+                    return "";
+                target = file.TryGetLocalPath();
+                if (target == null)
+                    return "Choose a folder on this computer.";
+            }
+            else
+            {
+                target = PrintService.TempPdfPath();
+            }
+
+            var error = await MakePdfAsync(options, target);
+            if (error != null)
+                return error;
+
+            if (options.Printer == null)
+            {
+                ShowNotification("Print", "Saved " + System.IO.Path.GetFileName(target));
+                return null;
+            }
+            try
+            {
+                error = await PrintService.SendToPrinterAsync(target, options);
+            }
+            finally
+            {
+                try { System.IO.File.Delete(target); } catch { }
+            }
+            if (error == null)
+                ShowNotification("Print", "Sent to " + options.Printer);
+            return error;
+        });
+    }
+
+    private static bool IsPrintablePage(string? url)
+        => Uri.TryCreate(url, UriKind.Absolute, out var uri)
+           && uri.Scheme is "http" or "https" or "file" or "data";
+
+    private async Task<byte[]?> PrintImageBytesAsync(AvaloniaCefBrowser browser, PageCopyContext image)
+    {
+        var bytes = PageCopy.DecodeDataUrl(image.ImageUrl!);
+        if (bytes != null)
+            return bytes;
+        byte[]? result = null;
+        await RunOnBrowserAsync(browser, async () =>
+        {
+            var url = await FindOriginalImageUrlAsync(image);
+            if (!string.IsNullOrWhiteSpace(url))
+                result = PageCopy.DecodeDataUrl(url) ?? await DownloadPageImageAsync(url);
+            if (result == null || result.Length == 0)
+                result = await DownloadPageImageAsync(image.ImageUrl!);
+        });
+        return result is { Length: > 0 } ? result : null;
     }
 
     private void OnReopenClosedTabKeyDown(object? sender, KeyEventArgs e)

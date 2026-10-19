@@ -41,6 +41,7 @@ public partial class SuperMenuControl : UserControl
     public event EventHandler? CopyRequested;
     public event EventHandler? CutRequested;
     public event EventHandler? PasteRequested;
+    public event EventHandler? PrintRequested;
     public event EventHandler? SaveImageRequested;
     public event EventHandler? CopyImageAddressRequested;
     public event EventHandler? InstallExtensionRequested;
@@ -528,6 +529,11 @@ public partial class SuperMenuControl : UserControl
     private void PasteButton_Click(object? sender, RoutedEventArgs e)
     {
         PasteRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void PrintButton_Click(object? sender, RoutedEventArgs e)
+    {
+        PrintRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void SaveImageButton_Click(object? sender, RoutedEventArgs e)

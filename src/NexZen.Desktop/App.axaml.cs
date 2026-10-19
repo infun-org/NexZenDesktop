@@ -208,6 +208,45 @@ public partial class App : Avalonia.Application
     }
 
     /// <summary>
+    /// The print dialog over <paramref name="owner"/>. <paramref name="run"/> gets the chosen
+    /// options and the dialog window (for the save picker) and returns an error or null.
+    /// </summary>
+    public async void ShowPrintDialog(Window owner, bool image, string subject,
+        Func<PrintOptions, System.Threading.CancellationToken, System.Threading.Tasks.Task<PrintPreview>> preview,
+        string previewFolder,
+        Func<PrintOptions, Window, System.Threading.Tasks.Task<string?>> run)
+    {
+        if (ServiceProvider?.GetService<PrintViewModel>() is not { } print)
+            return;
+        print.MakePreview = null;
+        print.Begin(image, subject);
+        var window = new NexZen.Desktop.Views.PrintWindow { DataContext = print };
+        print.Run = options => run(options, window);
+        print.CloseRequested = () => window.Close();
+        print.MakePreview = preview;
+        var printers = NexZen.Desktop.Services.PrintService.GetPrintersAsync();
+        var shown = window.ShowDialog(owner);
+        try
+        {
+            var (list, defaultPrinter) = await printers;
+            print.SetPrinters(list, defaultPrinter);
+        }
+        catch (Exception ex)
+        {
+            Program.StartupLog.Write("printer list failed: " + ex.Message);
+        }
+        // After the printer list, so the first preview already knows the destination.
+        print.RefreshPreview();
+        await shown;
+        print.StopPreview();
+        print.MakePreview = null;
+        print.Run = null;
+        print.CloseRequested = null;
+        print.PreviewPages.Clear();
+        try { System.IO.Directory.Delete(previewFolder, recursive: true); } catch { }
+    }
+
+    /// <summary>
     /// The pinned editor window, for "Add new" (<paramref name="workspaceId"/> null) and for
     /// "Update" (name and tabs of that workspace). A new draft is kept when the window is
     /// closed; after a save the workspace window comes back with the changes.
@@ -374,6 +413,7 @@ public partial class App : Avalonia.Application
         services.AddTransient<Func<ICustomStyleRepository>>(sp => () => sp.GetRequiredService<ICustomStyleRepository>());
         services.AddSingleton<NexZen.Application.Services.CustomStyleStore>();
         services.AddSingleton<CustomCssViewModel>();
+        services.AddSingleton<PrintViewModel>();
 
         // 3. NexShare Services
         services.AddSingleton<INexShareCrypto, NexShareCrypto>();
