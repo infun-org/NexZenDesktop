@@ -404,6 +404,9 @@ public partial class SuperMenuControl : UserControl
         var responsiveTools = this.FindControl<Button>("ResponsiveToolsButton");
         if (responsiveTools != null)
             responsiveTools.IsVisible = _toolsExpanded;
+        var newIncognito = this.FindControl<Button>("NewIncognitoButton");
+        if (newIncognito != null)
+            newIncognito.IsVisible = _toolsExpanded;
         var createQr = this.FindControl<Button>("CreateQrButton");
         if (createQr != null)
             createQr.IsVisible = _toolsExpanded;
@@ -425,6 +428,13 @@ public partial class SuperMenuControl : UserControl
             return;
         _toolsExpanded = false;
         UpdateToolsVisibility();
+    }
+
+    public void SetOpenInNewTabVisible(bool visible)
+    {
+        var button = this.FindControl<Button>("OpenInNewTabButton");
+        if (button != null)
+            button.IsVisible = visible;
     }
 
     public void SetOpenInNewWindowVisible(bool visible)

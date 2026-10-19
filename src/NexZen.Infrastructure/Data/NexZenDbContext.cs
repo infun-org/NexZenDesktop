@@ -16,6 +16,7 @@ public class NexZenDbContext : DbContext
     public NexZenDbContext(DbContextOptions<NexZenDbContext> options)
         : base(options)
     {
+        DatabaseStartup.WaitUntilReady();
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

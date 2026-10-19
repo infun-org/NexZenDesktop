@@ -180,6 +180,7 @@ class Program
     internal static class StartupLog
     {
         static string _path = "";
+        static readonly object WriteGate = new();
 
         public static void Open()
         {
@@ -217,7 +218,9 @@ class Program
             if (string.IsNullOrEmpty(_path)) return;
             try
             {
-                File.AppendAllText(_path, DateTime.Now.ToString("HH:mm:ss.fff ") + message + Environment.NewLine);
+                // Startup also logs from the background database setup.
+                lock (WriteGate)
+                    File.AppendAllText(_path, DateTime.Now.ToString("HH:mm:ss.fff ") + message + Environment.NewLine);
             }
             catch { }
         }

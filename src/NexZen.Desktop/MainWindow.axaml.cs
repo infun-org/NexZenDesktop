@@ -491,7 +491,7 @@ public partial class MainWindow : Window
         };
         _superMenuControl.ReopenClosedTabRequested += (_, _) => ReopenClosedTabFromUi();
 
-        _superMenuControl.OpenLinkInNewTabRequested += (_, _) => OpenLinkInNewTab(_copyContext?.LinkUrl);
+        _superMenuControl.OpenLinkInNewTabRequested += (_, _) => OpenLinkInNewTab(NewTabTarget(_copyContext));
         _superMenuControl.OpenInNewWindowRequested += (_, _) => OpenInNewWindowFromMenu();
         _superMenuControl.NewIncognitoWindowRequested += (_, _) => OpenIncognitoWindow();
         _superMenuControl.OpenOnPinnedWindowRequested += (_, _) => OpenOnPinnedWindowFromMenu();
@@ -2099,6 +2099,16 @@ public partial class MainWindow : Window
         Program.StartupLog.Write($"[NewWindow] transfer completed tab={tabId}");
     }
 
+    // "Open in New tab" only applies when the menu was opened on a link or an image.
+    private static string? NewTabTarget(PageCopyContext? copy)
+    {
+        if (copy == null)
+            return null;
+        if (Views.PopupBrowserWindow.CanOpen(copy.LinkUrl))
+            return copy.LinkUrl;
+        return copy.IsImage && Views.PopupBrowserWindow.CanOpen(copy.ImageUrl) ? copy.ImageUrl : null;
+    }
+
     private static bool CanOpenInNewWindow(PageCopyContext copy)
     {
         if (copy.IsImage && Views.PopupBrowserWindow.CanOpen(copy.ImageUrl))
@@ -3228,6 +3238,7 @@ public partial class MainWindow : Window
             _copyContext = copy;
             _superMenuControl.ResetToMainMenu();
             _superMenuControl.SetSaveImageVisible(copy.IsImage);
+            _superMenuControl.SetOpenInNewTabVisible(NewTabTarget(copy) != null);
             _superMenuControl.SetOpenInNewWindowVisible(CanOpenInNewWindow(copy));
             _superMenuControl.SetOpenOnPinnedWindowVisible(true);
             _superMenuControl.SetMuteTabLabel(GetActiveTabState()?.AudioMuted == true);

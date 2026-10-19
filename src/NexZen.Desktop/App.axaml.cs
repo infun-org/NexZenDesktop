@@ -402,51 +402,92 @@ public partial class App : Avalonia.Application
         nexShareVm.UiInvoker = action => Avalonia.Threading.Dispatcher.UIThread.Post(action);
         StartupTimer.Mark("services built (NexShare view model resolved)");
 
-        // Ensure database is created (Migration)
-        var dbContext = ServiceProvider.GetRequiredService<NexZenDbContext>();
-        dbContext.Database.EnsureCreated();
-        try
+        // Create/upgrade the database on a worker thread while the window and CEF start.
+        // Any DbContext created meanwhile waits for it (DatabaseStartup.WaitUntilReady).
+        var databaseReady = NexZen.Infrastructure.Data.DatabaseStartup.Begin(() =>
         {
-            dbContext.Database.ExecuteSqlRaw(@"
-                CREATE TABLE IF NOT EXISTS ""DownloadRecords"" (
-                    ""Id"" TEXT NOT NULL CONSTRAINT ""PK_DownloadRecords"" PRIMARY KEY,
-                    ""FileName"" TEXT NOT NULL,
-                    ""Url"" TEXT NOT NULL,
-                    ""FilePath"" TEXT NOT NULL,
-                    ""TotalBytes"" INTEGER NOT NULL,
-                    ""DownloadedBytes"" INTEGER NOT NULL,
-                    ""State"" TEXT NOT NULL,
-                    ""Timestamp"" TEXT NOT NULL
-                );");
-            dbContext.Database.ExecuteSqlRaw(@"
-                CREATE TABLE IF NOT EXISTS ""SavedPasswords"" (
-                    ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_SavedPasswords"" PRIMARY KEY AUTOINCREMENT,
-                    ""Origin"" TEXT NOT NULL,
-                    ""Username"" TEXT NOT NULL,
-                    ""EncryptedPassword"" TEXT NOT NULL,
-                    ""CreatedAt"" TEXT NOT NULL,
-                    ""UpdatedAt"" TEXT NOT NULL
-                );
-                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_SavedPasswords_Origin_Username""
-                ON ""SavedPasswords"" (""Origin"", ""Username"");");
-        }
-        catch { }
-        try
-        {
+            // Own scope: the root DbContext is shared by repositories on the UI thread.
+            using var scope = ServiceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<NexZenDbContext>();
+            dbContext.Database.EnsureCreated();
+            try
+            {
+                dbContext.Database.ExecuteSqlRaw(@"
+                    CREATE TABLE IF NOT EXISTS ""DownloadRecords"" (
+                        ""Id"" TEXT NOT NULL CONSTRAINT ""PK_DownloadRecords"" PRIMARY KEY,
+                        ""FileName"" TEXT NOT NULL,
+                        ""Url"" TEXT NOT NULL,
+                        ""FilePath"" TEXT NOT NULL,
+                        ""TotalBytes"" INTEGER NOT NULL,
+                        ""DownloadedBytes"" INTEGER NOT NULL,
+                        ""State"" TEXT NOT NULL,
+                        ""Timestamp"" TEXT NOT NULL
+                    );");
+                dbContext.Database.ExecuteSqlRaw(@"
+                    CREATE TABLE IF NOT EXISTS ""SavedPasswords"" (
+                        ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_SavedPasswords"" PRIMARY KEY AUTOINCREMENT,
+                        ""Origin"" TEXT NOT NULL,
+                        ""Username"" TEXT NOT NULL,
+                        ""EncryptedPassword"" TEXT NOT NULL,
+                        ""CreatedAt"" TEXT NOT NULL,
+                        ""UpdatedAt"" TEXT NOT NULL
+                    );
+                    CREATE UNIQUE INDEX IF NOT EXISTS ""IX_SavedPasswords_Origin_Username""
+                    ON ""SavedPasswords"" (""Origin"", ""Username"");");
+            }
+            catch { }
             NexZen.Infrastructure.Data.WorkspaceSchema.Ensure(dbContext);
             NexZen.Infrastructure.Data.CustomStyleSchema.Ensure(dbContext);
-            // Before the first page loads, so its Custom CSS applies right away.
-            ServiceProvider.GetRequiredService<NexZen.Application.Services.CustomStyleStore>().LoadAsync().GetAwaiter().GetResult();
-        }
-        catch (Exception ex)
+            StartupTimer.Mark("database ready (background)");
+        }, ex => Program.StartupLog.Write("database setup failed: " + ex.Message));
+        // Custom CSS is read after the tables exist; the first page starts loading well after that.
+        _ = databaseReady.ContinueWith(_ =>
         {
-            Program.StartupLog.Write("workspace/custom css tables failed: " + ex.Message);
-        }
-        StartupTimer.Mark("database ready");
+            try
+            {
+                ServiceProvider.GetRequiredService<NexZen.Application.Services.CustomStyleStore>().LoadAsync().GetAwaiter().GetResult();
+                StartupTimer.Mark("custom css loaded (background)");
+            }
+            catch (Exception ex)
+            {
+                Program.StartupLog.Write("custom css load failed: " + ex.Message);
+            }
+        }, System.Threading.Tasks.TaskScheduler.Default);
 
-        // Update Tray Icon when NexShare status changes
         var orchestrator = ServiceProvider.GetRequiredService<INexShareOrchestrator>();
         StartupTimer.Mark("NexShare orchestrator resolved");
+
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            // Unregister the BLE advertisement / GATT app (BlueZ also drops them when our D-Bus connection closes).
+            desktop.Exit += (_, _) =>
+            {
+                try { System.Threading.Tasks.Task.Run(() => orchestrator.StopAsync()).Wait(3000); } catch { }
+            };
+            StartupTimer.Mark("MainWindow create");
+            var mainWindow = new MainWindow();
+            desktop.MainWindow = mainWindow;
+            StartupTimer.Mark("MainWindow created");
+            // NexShare's window/tray hooks are not needed to show the browser: attach them last.
+            void AttachNexShareOnce(object? sender, EventArgs e)
+            {
+                mainWindow.Opened -= AttachNexShareOnce;
+                Avalonia.Threading.Dispatcher.UIThread.Post(
+                    () => AttachNexShare(nexShareVm, orchestrator),
+                    Avalonia.Threading.DispatcherPriority.Background);
+            }
+            mainWindow.Opened += AttachNexShareOnce;
+        }
+
+        base.OnFrameworkInitializationCompleted();
+#if DEBUG
+        this.AttachDeveloperTools();
+#endif
+    }
+
+    private void AttachNexShare(NexShareViewModel nexShareVm, INexShareOrchestrator orchestrator)
+    {
+        // Update Tray Icon when NexShare status changes
         orchestrator.OnConnectionStatusChanged += (s, e) =>
         {
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
@@ -492,22 +533,6 @@ public partial class App : Avalonia.Application
                 }
             });
         };
-
-        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-        {
-            // Unregister the BLE advertisement / GATT app (BlueZ also drops them when our D-Bus connection closes).
-            desktop.Exit += (_, _) =>
-            {
-                try { System.Threading.Tasks.Task.Run(() => orchestrator.StopAsync()).Wait(3000); } catch { }
-            };
-            StartupTimer.Mark("MainWindow create");
-            desktop.MainWindow = new MainWindow();
-            StartupTimer.Mark("MainWindow created");
-        }
-
-        base.OnFrameworkInitializationCompleted();
-#if DEBUG
-        this.AttachDeveloperTools();
-#endif
+        StartupTimer.Mark("NexShare hooks attached");
     }
 }
