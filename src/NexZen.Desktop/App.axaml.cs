@@ -197,11 +197,12 @@ public partial class App : Avalonia.Application
     private NexZen.Desktop.Views.SitePrivacyWindow? _sitePrivacyWindow;
 
     /// <summary>"Site privacy" for the page; one window, refreshed for the current page.</summary>
-    public void ShowSitePrivacyWindow(Window owner, string? pageUrl, byte[]? faviconPng)
+    public void ShowSitePrivacyWindow(Window owner, string? pageUrl, byte[]? faviconPng,
+        Xilium.CefGlue.Avalonia.AvaloniaCefBrowser? page)
     {
         if (ServiceProvider?.GetService<SitePrivacyViewModel>() is not { } privacy)
             return;
-        privacy.Load(pageUrl, faviconPng);
+        _ = privacy.LoadAsync(pageUrl, faviconPng, page == null ? null : new NexZen.Desktop.Services.SiteDataService(page));
         if (_sitePrivacyWindow == null)
         {
             _sitePrivacyWindow = new NexZen.Desktop.Views.SitePrivacyWindow { DataContext = privacy };
@@ -430,6 +431,9 @@ public partial class App : Avalonia.Application
         services.AddTransient<ICustomStyleRepository, CustomStyleRepository>();
         services.AddTransient<Func<ICustomStyleRepository>>(sp => () => sp.GetRequiredService<ICustomStyleRepository>());
         services.AddSingleton<NexZen.Application.Services.CustomStyleStore>();
+        services.AddTransient<ISitePermissionRepository, SitePermissionRepository>();
+        services.AddTransient<Func<ISitePermissionRepository>>(sp => () => sp.GetRequiredService<ISitePermissionRepository>());
+        services.AddSingleton<NexZen.Application.Services.SitePermissionStore>();
         services.AddSingleton<CustomCssViewModel>();
         services.AddSingleton<PrintViewModel>();
         services.AddSingleton<SitePrivacyViewModel>();
@@ -497,6 +501,7 @@ public partial class App : Avalonia.Application
             catch { }
             NexZen.Infrastructure.Data.WorkspaceSchema.Ensure(dbContext);
             NexZen.Infrastructure.Data.CustomStyleSchema.Ensure(dbContext);
+            NexZen.Infrastructure.Data.SitePermissionSchema.Ensure(dbContext);
             StartupTimer.Mark("database ready (background)");
         }, ex => Program.StartupLog.Write("database setup failed: " + ex.Message));
         // Custom CSS is read after the tables exist; the first page starts loading well after that.
@@ -506,6 +511,10 @@ public partial class App : Avalonia.Application
             {
                 ServiceProvider.GetRequiredService<NexZen.Application.Services.CustomStyleStore>().LoadAsync().GetAwaiter().GetResult();
                 StartupTimer.Mark("custom css loaded (background)");
+                // Site privacy choices: CEF keeps content settings in memory only, so apply them each start.
+                var sitePermissions = ServiceProvider.GetRequiredService<NexZen.Application.Services.SitePermissionStore>();
+                sitePermissions.LoadAsync().GetAwaiter().GetResult();
+                NexZen.Desktop.Services.SiteContentSettings.ApplyAll(sitePermissions);
             }
             catch (Exception ex)
             {

@@ -39,6 +39,8 @@ public partial class MainWindow : Window
         public string? AppliedUserAgent { get; set; }
         public bool ContentFullscreen { get; set; }
         public bool AudioMuted { get; set; }
+        /// <summary>Muted because Site privacy has Sound = Mute for the page's site (not by the user).</summary>
+        public bool MutedBySite { get; set; }
         public int FaviconRequestVersion { get; set; }
     }
 
@@ -505,12 +507,21 @@ public partial class MainWindow : Window
             CloseSuperMenu();
             OpenDevTools(copy?.X ?? 0, copy?.Y ?? 0);
         };
+        // A new Sound choice in Site privacy applies to the open page right away.
+        Services.SiteDataService.SoundChanged += browser => Dispatcher.UIThread.Post(() =>
+        {
+            foreach (var state in _tabs.Values)
+            {
+                if (ReferenceEquals(state.Browser, browser))
+                    ApplySiteSound(state, browser, browser.Address ?? "");
+            }
+        });
         _superMenuControl.SitePrivacyRequested += (_, _) =>
         {
             CloseSuperMenu();
             var tab = _viewModel?.ActiveTab;
             if (Avalonia.Application.Current is App app)
-                app.ShowSitePrivacyWindow(this, tab?.Url, tab?.FaviconPng);
+                app.ShowSitePrivacyWindow(this, tab?.Url, tab?.FaviconPng, GetActiveTabState()?.Browser);
         };
         _superMenuControl.PageViewRequested += (_, _) =>
         {
@@ -1341,6 +1352,12 @@ public partial class MainWindow : Window
         {
             Program.StartupLog.Write($"[MainWindowClose] CEF before-close tab={tab.Id}");
             Dispatcher.UIThread.Post(() => DetachBrowserControlAfterClose(tab.Id, browser));
+        }, (sourceUrl, _) =>
+        {
+            if (_viewModel?.ActiveTab?.Id == tab.Id)
+                ShowNotification("Pop-up blocked",
+                    $"{SiteDomains.SiteOf(sourceUrl) ?? "This page"} tried to open a pop-up. Allow it in Tools > Site privacy.",
+                    NotificationType.Warning);
         });
         
         browser.BrowserInitialized += () =>
@@ -1360,6 +1377,7 @@ public partial class MainWindow : Window
             var url = e.Frame.Url ?? "";
             if (url.Contains("chromewebstore.google.com", StringComparison.OrdinalIgnoreCase))
                 e.Frame.ExecuteJavaScript(WebStoreInstaller.StoreScript, url, 1);
+            Dispatcher.UIThread.Post(() => ApplySiteSound(state, browser, url));
         };
         browser.LoadEnd += (s, e) =>
         {
@@ -3368,6 +3386,28 @@ public partial class MainWindow : Window
         Views.IncognitoWindow.Open(this, _viewModel);
     }
 
+    /// <summary>
+    /// Site privacy "Sound": mutes the tab on a site set to Mute, and unmutes it again when it
+    /// leaves that site (only if it was muted by this rule, not by the user).
+    /// </summary>
+    private static void ApplySiteSound(TabState state, AvaloniaCefBrowser browser, string url)
+    {
+        var store = App.ServiceProvider?.GetService<SitePermissionStore>();
+        var mute = store?.Get(SiteDomains.SiteOf(url), SitePermissionKeys.Sound) == SitePermissionValue.Block;
+        if (mute && !state.AudioMuted)
+        {
+            state.AudioMuted = true;
+            state.MutedBySite = true;
+            TabAudio.Apply(browser, true);
+        }
+        else if (!mute && state.MutedBySite)
+        {
+            state.AudioMuted = false;
+            state.MutedBySite = false;
+            TabAudio.Apply(browser, false);
+        }
+    }
+
     private void ToggleMuteActiveTab()
     {
         var state = GetActiveTabState();
@@ -3376,6 +3416,7 @@ public partial class MainWindow : Window
         if (state == null || browser == null)
             return;
         state.AudioMuted = !state.AudioMuted;
+        state.MutedBySite = false;
         TabAudio.Apply(browser, state.AudioMuted);
     }
 

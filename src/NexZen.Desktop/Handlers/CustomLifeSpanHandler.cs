@@ -1,4 +1,6 @@
 using System;
+using Microsoft.Extensions.DependencyInjection;
+using NexZen.Application.Services;
 using Avalonia.Threading;
 using Xilium.CefGlue;
 using Xilium.CefGlue.Common.Handlers;
@@ -10,10 +12,20 @@ namespace NexZen.Desktop.Handlers
         private readonly Action<string, string> _onPopupRequest;
         private readonly Action? _onBeforeClose;
 
-        public CustomLifeSpanHandler(Action<string, string> onPopupRequest, Action? onBeforeClose = null)
+        private readonly Action<string, string>? _onPopupBlocked;
+
+        public CustomLifeSpanHandler(Action<string, string> onPopupRequest, Action? onBeforeClose = null,
+            Action<string, string>? onPopupBlocked = null)
         {
             _onPopupRequest = onPopupRequest;
             _onBeforeClose = onBeforeClose;
+            _onPopupBlocked = onPopupBlocked;
+        }
+
+        private static bool PopupsAllowed(string sourceUrl)
+        {
+            var store = App.ServiceProvider?.GetService<SitePermissionStore>();
+            return store?.Decide(SiteDomains.SiteOf(sourceUrl), SitePermissionKeys.Popups) == true;
         }
 
         protected override void OnBeforeClose(CefBrowser browser)
@@ -36,6 +48,15 @@ namespace NexZen.Desktop.Handlers
                 return false; // Let CEF handle it normally (in-tab navigation)
 
             var sourceUrl = browser.GetMainFrame()?.Url ?? "";
+            // Site privacy "Pop-ups and redirects": like Chrome, pop-ups the user did not click
+            // for are blocked unless the site is allowed to open them.
+            if (!userGesture && !PopupsAllowed(sourceUrl))
+            {
+                Console.WriteLine($"[Popup] blocked (no user gesture) from {SiteDomains.SiteOf(sourceUrl)} to {targetUrl}");
+                if (_onPopupBlocked != null && !string.IsNullOrEmpty(targetUrl))
+                    Dispatcher.UIThread.Post(() => _onPopupBlocked(sourceUrl, targetUrl));
+                return true;
+            }
             if (!string.IsNullOrEmpty(targetUrl))
             {
                 Dispatcher.UIThread.Post(() => _onPopupRequest(sourceUrl, targetUrl));

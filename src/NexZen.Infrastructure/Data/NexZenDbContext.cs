@@ -12,6 +12,7 @@ public class NexZenDbContext : DbContext
     public DbSet<Workspace> Workspaces { get; set; } = null!;
     public DbSet<WorkspaceTab> WorkspaceTabs { get; set; } = null!;
     public DbSet<CustomStyle> CustomStyles { get; set; } = null!;
+    public DbSet<SitePermissionSetting> SitePermissions { get; set; } = null!;
 
     public NexZenDbContext(DbContextOptions<NexZenDbContext> options)
         : base(options)
@@ -40,5 +41,8 @@ public class NexZenDbContext : DbContext
         // Keep in sync with CustomStyleSchema.
         modelBuilder.Entity<CustomStyle>().HasKey(s => s.Id);
         modelBuilder.Entity<CustomStyle>().HasIndex(s => s.Site).IsUnique();
+        // Keep in sync with SitePermissionSchema.
+        modelBuilder.Entity<SitePermissionSetting>().HasKey(s => s.Id);
+        modelBuilder.Entity<SitePermissionSetting>().HasIndex(s => new { s.Site, s.Permission }).IsUnique();
     }
 }
