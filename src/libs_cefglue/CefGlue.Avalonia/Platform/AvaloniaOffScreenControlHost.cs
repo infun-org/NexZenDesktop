@@ -30,6 +30,82 @@ namespace Xilium.CefGlue.Avalonia.Platform
     internal class AvaloniaOffScreenControlHost : AvaloniaControl, IOffScreenControlHost
     {
         public ImeState CurrentImeState { get; set; } = ImeState.Idle;
+
+        /// <summary>
+        /// Leading part of the IME's pending (preedit) text that was already typed into the page
+        /// (digits, see CefTextInputMethodClient). The IME commits it again later; that copy is dropped.
+        /// </summary>
+        public string TypedPreeditPrefix { get; set; } = "";
+
+        // Numpad digits the IME swallows without any output (no key down, no preedit, no
+        // commit; fcitx5 Lotus with NumLock on) are typed on key up instead.
+        private readonly HashSet<Key> _keysDownSeen = new();
+        private bool _imeOutputSinceKey;
+
+        /// <summary>Called when the IME shows or commits text, so a key up does not type again.</summary>
+        internal void NoteImeOutput() => _imeOutputSinceKey = true;
+
+        private static char? NumPadDigit(Key key)
+            => key >= Key.NumPad0 && key <= Key.NumPad9 ? (char)('0' + (key - Key.NumPad0)) : null;
+
+        /// <summary>
+        /// Types digits as complete keystrokes (key down, character, key up). A bare Char event
+        /// that no key down announced is dropped by Chromium here (seen with numpad digits that
+        /// the IME swallowed), so the page needs the whole keystroke.
+        /// </summary>
+        internal static void SendDigitKeystrokes(CefBrowserHost host, string digits)
+        {
+            if (s_isTraceEnabled)
+                Console.WriteLine($"[Trace][AvaloniaOffScreenControlHost.SendDigitKeystrokes] '{digits}'");
+            foreach (var c in digits)
+            {
+                var virtualKey = CharKeyCode.WindowsKeyCode(c); // VK_0..VK_9
+                var native = LinuxNativeKey.FromCharacter(c);
+                host.SendKeyEvent(new CefKeyEvent
+                {
+                    EventType = CefKeyEventType.RawKeyDown,
+                    WindowsKeyCode = virtualKey,
+                    NativeKeyCode = native,
+                    Character = c,
+                    UnmodifiedCharacter = c
+                });
+                host.SendKeyEvent(new CefKeyEvent
+                {
+                    EventType = CefKeyEventType.Char,
+                    WindowsKeyCode = virtualKey,
+                    NativeKeyCode = native,
+                    Character = c,
+                    UnmodifiedCharacter = c
+                });
+                host.SendKeyEvent(new CefKeyEvent
+                {
+                    EventType = CefKeyEventType.KeyUp,
+                    WindowsKeyCode = virtualKey,
+                    NativeKeyCode = native,
+                    Character = c,
+                    UnmodifiedCharacter = c
+                });
+            }
+        }
+
+        /// <summary>Sends text to the page as plain character events.</summary>
+        internal static void SendChars(CefBrowserHost host, string text)
+        {
+            if (s_isTraceEnabled)
+                Console.WriteLine($"[Trace][AvaloniaOffScreenControlHost.SendChars] '{text}'");
+            foreach (var c in text)
+            {
+                host.SendKeyEvent(new CefKeyEvent()
+                {
+                    EventType = CefKeyEventType.Char,
+                    WindowsKeyCode = CharKeyCode.WindowsKeyCode(c),
+                    NativeKeyCode = LinuxNativeKey.FromCharacter(c),
+                    Character = c,
+                    UnmodifiedCharacter = c,
+                    Modifiers = CharKeyCode.Modifiers(c)
+                });
+            }
+        }
         public Rect CursorRect { get; private set; } = new Rect(0, 0, 1, 1);
         private CefTextInputMethodClient _imeClient;
         // TODO avalonia: get value from OS
@@ -164,23 +240,39 @@ namespace Xilium.CefGlue.Avalonia.Platform
 
         private void OnTextInput(object sender, TextInputEventArgs e)
         {
+            NoteImeOutput();
             if (s_isTraceEnabled)
                 Console.WriteLine($"[Trace][AvaloniaOffScreenControlHost.OnTextInput] Text='{e.Text}'");
 
             var handled = false;
+
+            // Digits the IME kept pending were typed already; don't type them a second time.
+            var text = e.Text ?? "";
+            if (TypedPreeditPrefix.Length > 0)
+            {
+                if (text.StartsWith(TypedPreeditPrefix, StringComparison.Ordinal))
+                    text = text.Substring(TypedPreeditPrefix.Length);
+                TypedPreeditPrefix = "";
+                if (text.Length == 0)
+                {
+                    CurrentImeState = ImeState.Idle;
+                    e.Handled = true;
+                    return;
+                }
+            }
 
             if (CurrentImeState == ImeState.Composing || CurrentImeState == ImeState.PendingCommit)
             {
                 // IME commit path is Linux-only. On Windows/macOS, CEF handles text input natively.
                 if (CefRuntime.Platform != CefRuntimePlatform.Linux)
                 {
-                    TextInput?.Invoke(e.Text, out handled);
+                    TextInput?.Invoke(text, out handled);
                     e.Handled = handled;
                     return;
                 }
 
                 if (s_isTraceEnabled)
-                    Console.WriteLine($"[Trace][AvaloniaOffScreenControlHost.OnTextInput] Intercepted by IME. Committing text: {e.Text}");
+                    Console.WriteLine($"[Trace][AvaloniaOffScreenControlHost.OnTextInput] Intercepted by IME. Committing text: {text}");
                 
                 if (_control is AvaloniaCefBrowser browser)
                 {
@@ -195,17 +287,7 @@ namespace Xilium.CefGlue.Avalonia.Platform
                         host.ImeCancelComposition();
 
                         // Send the committed text as standard Char events.
-                        foreach (var c in e.Text)
-                        {
-                            host.SendKeyEvent(new CefKeyEvent()
-                            {
-                                EventType = CefKeyEventType.Char,
-                                WindowsKeyCode = c,
-                                NativeKeyCode = LinuxNativeKey.FromCharacter(c),
-                                Character = c,
-                                UnmodifiedCharacter = c
-                            });
-                        }
+                        SendChars(host, text);
 
                         host.Invalidate(CefPaintElementType.View);
                         CurrentImeState = ImeState.Idle;
@@ -215,7 +297,7 @@ namespace Xilium.CefGlue.Avalonia.Platform
             }
             else
             {
-                TextInput?.Invoke(e.Text, out handled);
+                TextInput?.Invoke(text, out handled);
             }
             
             e.Handled = handled;
@@ -228,6 +310,19 @@ namespace Xilium.CefGlue.Avalonia.Platform
         {
             if (s_isTraceEnabled)
                 Console.WriteLine($"[Trace][AvaloniaOffScreenControlHost.OnKeyUp] Key={e.Key}");
+
+            var keyDownSeen = _keysDownSeen.Remove(e.Key);
+            var imeOutput = _imeOutputSinceKey;
+            _imeOutputSinceKey = false;
+            if (CefRuntime.Platform == CefRuntimePlatform.Linux && !keyDownSeen && !imeOutput
+                && NumPadDigit(e.Key) is char digit
+                && _control is AvaloniaCefBrowser numpadBrowser && numpadBrowser.IsBrowserInitialized
+                && numpadBrowser.GetBrowserHost() is { } numpadHost)
+            {
+                SendDigitKeystrokes(numpadHost, digit.ToString());
+                e.Handled = true;
+                return;
+            }
 
             if (CefRuntime.Platform == CefRuntimePlatform.Linux
                 && !ImeConfig.IsDisabled
@@ -249,6 +344,8 @@ namespace Xilium.CefGlue.Avalonia.Platform
         {
             if (s_isTraceEnabled)
                 Console.WriteLine($"[Trace][AvaloniaOffScreenControlHost.OnKeyDown] Key={e.Key}, Modifiers={e.KeyModifiers}");
+            _keysDownSeen.Add(e.Key);
+            _imeOutputSinceKey = false;
 
             if (CurrentImeState == ImeState.PendingCommit)
             {
@@ -420,6 +517,9 @@ namespace Xilium.CefGlue.Avalonia.Platform
         {
             if (s_isTraceEnabled)
                 Console.WriteLine("[Trace][AvaloniaOffScreenControlHost.OnLostFocus]");
+
+            // Digits typed from a pending composition: the IME drops that composition now.
+            TypedPreeditPrefix = "";
 
             // Phase 4+5: Cancel any in-progress composition when focus is lost
             // to prevent ghost preedit text remaining in the browser.

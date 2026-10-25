@@ -148,10 +148,11 @@ namespace Xilium.CefGlue.Common
                         var keyEvent = new CefKeyEvent()
                         {
                             EventType = CefKeyEventType.Char,
-                            WindowsKeyCode = c,
+                            WindowsKeyCode = CharKeyCode.WindowsKeyCode(c),
                             NativeKeyCode = LinuxNativeKey.FromCharacter(c),
                             Character = c,
-                            UnmodifiedCharacter = c
+                            UnmodifiedCharacter = c,
+                            Modifiers = CharKeyCode.Modifiers(c)
                         };
 
                         if (Environment.GetEnvironmentVariable("NEXZEN_IME_TRACE") == "1")
