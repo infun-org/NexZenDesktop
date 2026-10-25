@@ -43,8 +43,19 @@ namespace Xilium.CefGlue.Avalonia.Platform
             // pending and only commit them on an unrelated key, and the pending text never shows
             // in the page. Digits are typed at once; the later commit drops what was typed.
             var typed = _host.TypedPreeditPrefix;
-            if (typed.Length > 0 && !string.IsNullOrEmpty(text) && !text.StartsWith(typed, StringComparison.Ordinal))
-                typed = _host.TypedPreeditPrefix = "";
+            if (typed.Length > 0 && !string.IsNullOrEmpty(text))
+            {
+                // The IME edited its pending text (Backspace goes to the IME, not the page):
+                // remove from the page what it no longer holds, keep what both still share.
+                var common = 0;
+                while (common < typed.Length && common < text.Length && typed[common] == text[common])
+                    common++;
+                if (common < typed.Length)
+                {
+                    AvaloniaOffScreenControlHost.SendBackspaces(host, typed.Length - common);
+                    typed = _host.TypedPreeditPrefix = typed.Substring(0, common);
+                }
+            }
             var pending = string.IsNullOrEmpty(text) ? "" : text.Substring(typed.Length);
 
             if (string.IsNullOrEmpty(text))
@@ -54,6 +65,18 @@ namespace Xilium.CefGlue.Avalonia.Platform
                     _host.CurrentImeState = ImeState.PendingCommit;
                     host.ImeCancelComposition();
                 }
+                // Normally the commit follows right away and drops the typed digits. If it does
+                // not, the IME discarded them (e.g. Backspace down to nothing): remove them too.
+                if (typed.Length > 0)
+                    _host.RemoveTypedPreeditIfNotCommitted(typed);
+            }
+            else if (pending.Length == 0)
+            {
+                // Only already-typed digits are left (a letter after them was deleted).
+                if (_host.CurrentImeState == ImeState.Composing)
+                    host.ImeCancelComposition();
+                _host.CurrentImeState = ImeState.PendingCommit;
+                host.Invalidate(CefPaintElementType.View);
             }
             else if (pending.Length > 0 && IsTypedAtOnce(pending))
             {

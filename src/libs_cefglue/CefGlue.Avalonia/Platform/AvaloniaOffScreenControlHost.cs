@@ -88,6 +88,36 @@ namespace Xilium.CefGlue.Avalonia.Platform
             }
         }
 
+        /// <summary>Deletes characters before the caret, as Backspace keystrokes.</summary>
+        internal static void SendBackspaces(CefBrowserHost host, int count)
+        {
+            if (s_isTraceEnabled)
+                Console.WriteLine($"[Trace][AvaloniaOffScreenControlHost.SendBackspaces] {count}");
+            var native = LinuxNativeKey.FromVirtualKey(0x08);
+            for (var i = 0; i < count; i++)
+            {
+                host.SendKeyEvent(new CefKeyEvent { EventType = CefKeyEventType.RawKeyDown, WindowsKeyCode = 0x08, NativeKeyCode = native });
+                host.SendKeyEvent(new CefKeyEvent { EventType = CefKeyEventType.KeyUp, WindowsKeyCode = 0x08, NativeKeyCode = native });
+            }
+        }
+
+        /// <summary>
+        /// The IME cleared its pending text. If no commit of the typed digits follows shortly,
+        /// the IME dropped them, so they are removed from the page as well.
+        /// </summary>
+        internal void RemoveTypedPreeditIfNotCommitted(string typed)
+        {
+            DispatcherTimer.RunOnce(() =>
+            {
+                if (TypedPreeditPrefix != typed)
+                    return; // committed (or changed) in the meantime
+                TypedPreeditPrefix = "";
+                if (_control is AvaloniaCefBrowser browser && browser.IsBrowserInitialized
+                    && browser.GetBrowserHost() is { } host)
+                    SendBackspaces(host, typed.Length);
+            }, TimeSpan.FromMilliseconds(150));
+        }
+
         /// <summary>Sends text to the page as plain character events.</summary>
         internal static void SendChars(CefBrowserHost host, string text)
         {
