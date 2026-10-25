@@ -514,7 +514,7 @@ public partial class App : Avalonia.Application
                 // Site privacy choices: CEF keeps content settings in memory only, so apply them each start.
                 var sitePermissions = ServiceProvider.GetRequiredService<NexZen.Application.Services.SitePermissionStore>();
                 sitePermissions.LoadAsync().GetAwaiter().GetResult();
-                NexZen.Desktop.Services.SiteContentSettings.ApplyAll(sitePermissions);
+                NexZen.Desktop.Services.SiteContentSettings.ApplyAllWhenReady(sitePermissions);
             }
             catch (Exception ex)
             {

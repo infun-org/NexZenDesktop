@@ -121,7 +121,7 @@
               <RadioButton GroupName="Pages" Content="Custom" IsChecked="{Binding IsPageRange, Mode=OneWay}"
                            Click="CustomPages_Click"/>
             </StackPanel>
-            <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding PageRanges}" Watermark="e.g. 1-5, 8, 11-13"
+            <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding PageRanges}" PlaceholderText="e.g. 1-5, 8, 11-13"
                      IsVisible="{Binding IsPageRange}"/>
           </Grid>
 

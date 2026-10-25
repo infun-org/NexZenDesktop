@@ -32,6 +32,16 @@
         /// <summary>
         /// Returns the global context object.
         /// </summary>
+        /// <summary>
+        /// The global context, or null while CEF has not created it yet (early in startup).
+        /// </summary>
+        public static CefRequestContext TryGetGlobalContext()
+        {
+            return CefRequestContext.FromNativeOrNull(
+                cef_request_context_t.get_global_context()
+                );
+        }
+
         public static CefRequestContext GetGlobalContext()
         {
             return CefRequestContext.FromNative(

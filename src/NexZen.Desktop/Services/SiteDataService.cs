@@ -346,7 +346,6 @@ internal static class SiteContentSettings
         var types = TypesOf(key);
         if (types.Length == 0)
             return;
-        var target = context ?? CefRequestContext.GetGlobalContext();
         var setting = value switch
         {
             SitePermissionValue.Allow => CefContentSettingValue.Allow,
@@ -356,6 +355,13 @@ internal static class SiteContentSettings
         // Content settings are changed on CEF's UI thread.
         CefRuntime.PostTask(CefThreadId.UI, new UiActionTask(() =>
         {
+            // The global context exists only once CEF has finished starting up.
+            var target = context ?? CefRequestContext.TryGetGlobalContext();
+            if (target == null)
+            {
+                Console.WriteLine($"[SitePrivacy] no request context yet; {key} for {site} not applied");
+                return;
+            }
             foreach (var url in new[] { $"https://{site}/", $"https://www.{site}/", $"http://{site}/", $"http://www.{site}/" })
             foreach (var type in types)
             {
@@ -371,8 +377,42 @@ internal static class SiteContentSettings
         }));
     }
 
-    /// <summary>Re-applies every saved choice (CEF keeps content settings only in memory here).</summary>
-    public static void ApplyAll(SitePermissionStore store)
+    private static readonly object Gate = new();
+    private static SitePermissionStore? _pending;
+    private static bool _browserReady;
+
+    /// <summary>
+    /// Re-applies every saved choice (CEF keeps content settings only in memory here) once a
+    /// browser has been created, i.e. when CEF's global request context exists.
+    /// </summary>
+    public static void ApplyAllWhenReady(SitePermissionStore store)
+    {
+        lock (Gate)
+        {
+            if (!_browserReady)
+            {
+                _pending = store;
+                return;
+            }
+        }
+        ApplyAll(store);
+    }
+
+    /// <summary>Called when a browser finished initializing; applies the choices waiting for it.</summary>
+    public static void BrowserReady()
+    {
+        SitePermissionStore? store;
+        lock (Gate)
+        {
+            _browserReady = true;
+            store = _pending;
+            _pending = null;
+        }
+        if (store != null)
+            ApplyAll(store);
+    }
+
+    private static void ApplyAll(SitePermissionStore store)
     {
         foreach (var (site, key, value) in store.All())
             Apply(null, site, key, value);

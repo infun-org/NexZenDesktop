@@ -1362,6 +1362,8 @@ public partial class MainWindow : Window
         
         browser.BrowserInitialized += () =>
         {
+            // CEF's global request context exists now: apply saved Site privacy choices.
+            Services.SiteContentSettings.BrowserReady();
             Dispatcher.UIThread.Post(() =>
             {
                 if (state.Viewport != null && GetActiveTabState() == state)

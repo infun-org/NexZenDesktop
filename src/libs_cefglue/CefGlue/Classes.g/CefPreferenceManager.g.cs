@@ -36,7 +36,9 @@ namespace Xilium.CefGlue
         
         ~CefPreferenceManager()
         {
-            if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 0)
+            // _self is null when the constructor threw (FromNative got a null pointer);
+            // releasing it would crash the finalizer thread and with it the process.
+            if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 0 && _self != null)
             {
                 Release();
                 _self = null;
@@ -45,7 +47,9 @@ namespace Xilium.CefGlue
         
         public void Dispose()
         {
-            if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 0)
+            // _self is null when the constructor threw (FromNative got a null pointer);
+            // releasing it would crash the finalizer thread and with it the process.
+            if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 0 && _self != null)
             {
                 Release();
                 _self = null;
