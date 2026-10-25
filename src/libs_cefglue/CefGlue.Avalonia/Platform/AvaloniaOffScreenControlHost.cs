@@ -37,6 +37,33 @@ namespace Xilium.CefGlue.Avalonia.Platform
         /// </summary>
         public string TypedPreeditPrefix { get; set; } = "";
 
+        /// <summary>
+        /// One mark per character of <see cref="TypedPreeditPrefix"/>: 'y' typed into the page,
+        /// 'n' not typed (a numpad navigation key with NumLock off that the IME turned into a
+        /// digit), 'd' waiting for the key up to tell which key it was.
+        /// </summary>
+        internal string PreeditMarks { get; set; } = "";
+
+        internal void ClearTypedPreedit()
+        {
+            TypedPreeditPrefix = "";
+            PreeditMarks = "";
+        }
+
+        /// <summary>How many characters from <paramref name="from"/> on are in the page.</summary>
+        internal int ShownFrom(int from)
+        {
+            var count = 0;
+            for (var i = Math.Max(0, from); i < PreeditMarks.Length; i++)
+                if (PreeditMarks[i] == 'y')
+                    count++;
+            return count;
+        }
+
+        // Numpad keys with NumLock off, as Avalonia reports them on key up.
+        private static bool IsNumPadNavigationKey(Key key) => key is Key.End or Key.Down or Key.PageDown
+            or Key.Left or Key.Clear or Key.Right or Key.Home or Key.Up or Key.PageUp or Key.Insert or Key.Delete;
+
         // Numpad digits the IME swallows without any output (no key down, no preedit, no
         // commit; fcitx5 Lotus with NumLock on) are typed on key up instead.
         private readonly HashSet<Key> _keysDownSeen = new();
@@ -111,10 +138,11 @@ namespace Xilium.CefGlue.Avalonia.Platform
             {
                 if (TypedPreeditPrefix != typed)
                     return; // committed (or changed) in the meantime
-                TypedPreeditPrefix = "";
-                if (_control is AvaloniaCefBrowser browser && browser.IsBrowserInitialized
+                var shown = ShownFrom(0);
+                ClearTypedPreedit();
+                if (shown > 0 && _control is AvaloniaCefBrowser browser && browser.IsBrowserInitialized
                     && browser.GetBrowserHost() is { } host)
-                    SendBackspaces(host, typed.Length);
+                    SendBackspaces(host, shown);
             }, TimeSpan.FromMilliseconds(150));
         }
 
@@ -282,7 +310,7 @@ namespace Xilium.CefGlue.Avalonia.Platform
             {
                 if (text.StartsWith(TypedPreeditPrefix, StringComparison.Ordinal))
                     text = text.Substring(TypedPreeditPrefix.Length);
-                TypedPreeditPrefix = "";
+                ClearTypedPreedit();
                 if (text.Length == 0)
                 {
                     CurrentImeState = ImeState.Idle;
@@ -344,6 +372,35 @@ namespace Xilium.CefGlue.Avalonia.Platform
             var keyDownSeen = _keysDownSeen.Remove(e.Key);
             var imeOutput = _imeOutputSinceKey;
             _imeOutputSinceKey = false;
+
+            // A digit the IME made while NumLock was off: the released key says what it was.
+            var deferred = PreeditMarks.IndexOf('d');
+            if (CefRuntime.Platform == CefRuntimePlatform.Linux && !keyDownSeen && deferred >= 0
+                && _control is AvaloniaCefBrowser deferBrowser && deferBrowser.IsBrowserInitialized
+                && deferBrowser.GetBrowserHost() is { } deferHost)
+            {
+                var marks = PreeditMarks.ToCharArray();
+                if (IsNumPadNavigationKey(e.Key))
+                {
+                    // Numpad key in navigation mode: do what the key does, the digit stays out.
+                    var virtualKey = KeyInterop.VirtualKeyFromKey(e.Key);
+                    var native = LinuxNativeKey.FromVirtualKey(virtualKey);
+                    if (s_isTraceEnabled)
+                        Console.WriteLine($"[Trace][AvaloniaOffScreenControlHost.OnKeyUp] NumLock off: {e.Key} instead of '{TypedPreeditPrefix[deferred]}'");
+                    deferHost.SendKeyEvent(new CefKeyEvent { EventType = CefKeyEventType.RawKeyDown, WindowsKeyCode = virtualKey, NativeKeyCode = native });
+                    deferHost.SendKeyEvent(new CefKeyEvent { EventType = CefKeyEventType.KeyUp, WindowsKeyCode = virtualKey, NativeKeyCode = native });
+                    marks[deferred] = 'n';
+                }
+                else
+                {
+                    // A real digit key (top row): type it.
+                    SendDigitKeystrokes(deferHost, TypedPreeditPrefix[deferred].ToString());
+                    marks[deferred] = 'y';
+                }
+                PreeditMarks = new string(marks);
+                e.Handled = true;
+                return;
+            }
             if (CefRuntime.Platform == CefRuntimePlatform.Linux && !keyDownSeen && !imeOutput
                 && NumPadDigit(e.Key) is char digit
                 && _control is AvaloniaCefBrowser numpadBrowser && numpadBrowser.IsBrowserInitialized
@@ -549,7 +606,7 @@ namespace Xilium.CefGlue.Avalonia.Platform
                 Console.WriteLine("[Trace][AvaloniaOffScreenControlHost.OnLostFocus]");
 
             // Digits typed from a pending composition: the IME drops that composition now.
-            TypedPreeditPrefix = "";
+            ClearTypedPreedit();
 
             // Phase 4+5: Cancel any in-progress composition when focus is lost
             // to prevent ghost preedit text remaining in the browser.

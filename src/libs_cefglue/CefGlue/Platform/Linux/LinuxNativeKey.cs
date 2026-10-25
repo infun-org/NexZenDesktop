@@ -66,6 +66,39 @@ namespace Xilium.CefGlue
             return XKeysymToKeycode(_display, keysym);
         }
 
+        private static IntPtr _numLockAtom;
+
+        /// <summary>
+        /// Whether NumLock is on, from the X server's "Num Lock" indicator; null when unknown.
+        /// </summary>
+        public static bool? IsNumLockOn()
+        {
+            try
+            {
+                if (_display == IntPtr.Zero)
+                    _display = XOpenDisplay(IntPtr.Zero);
+                if (_display == IntPtr.Zero)
+                    return null;
+                if (_numLockAtom == IntPtr.Zero)
+                    _numLockAtom = XInternAtom(_display, "Num Lock", false);
+                if (_numLockAtom == IntPtr.Zero)
+                    return null;
+                if (!XkbGetNamedIndicator(_display, _numLockAtom, out _, out var state, IntPtr.Zero, out _))
+                    return null;
+                return state;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        [DllImport("libX11")]
+        private static extern IntPtr XInternAtom(IntPtr display, string atomName, bool onlyIfExists);
+
+        [DllImport("libX11")]
+        private static extern bool XkbGetNamedIndicator(IntPtr display, IntPtr name, out int index, out bool state, IntPtr map, out bool real);
+
         [DllImport("libX11")]
         private static extern IntPtr XOpenDisplay(IntPtr display);
 

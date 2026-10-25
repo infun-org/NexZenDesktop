@@ -52,8 +52,11 @@ namespace Xilium.CefGlue.Avalonia.Platform
                     common++;
                 if (common < typed.Length)
                 {
-                    AvaloniaOffScreenControlHost.SendBackspaces(host, typed.Length - common);
+                    var shown = _host.ShownFrom(common);
+                    if (shown > 0)
+                        AvaloniaOffScreenControlHost.SendBackspaces(host, shown);
                     typed = _host.TypedPreeditPrefix = typed.Substring(0, common);
+                    _host.PreeditMarks = _host.PreeditMarks.Substring(0, Math.Min(common, _host.PreeditMarks.Length));
                 }
             }
             var pending = string.IsNullOrEmpty(text) ? "" : text.Substring(typed.Length);
@@ -82,7 +85,17 @@ namespace Xilium.CefGlue.Avalonia.Platform
             {
                 if (_host.CurrentImeState == ImeState.Composing)
                     host.ImeCancelComposition();
-                AvaloniaOffScreenControlHost.SendDigitKeystrokes(host, pending);
+                if (LinuxNativeKey.IsNumLockOn() == false)
+                {
+                    // NumLock off: numpad keys are navigation keys, though the IME made digits
+                    // of them. Wait for the key up to see which key it was (see OnKeyUp).
+                    _host.PreeditMarks += new string('d', pending.Length);
+                }
+                else
+                {
+                    AvaloniaOffScreenControlHost.SendDigitKeystrokes(host, pending);
+                    _host.PreeditMarks += new string('y', pending.Length);
+                }
                 _host.TypedPreeditPrefix = text;
                 // The commit that follows goes through the IME path (and drops the typed part).
                 _host.CurrentImeState = ImeState.PendingCommit;
