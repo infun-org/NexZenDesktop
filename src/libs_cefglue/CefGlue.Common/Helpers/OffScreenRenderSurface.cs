@@ -65,6 +65,34 @@ namespace Xilium.CefGlue.Common.Helpers
 
         protected abstract Action BeginBitmapUpdate();
 
+        // At most one UI-thread update is queued. CEF paints at the frame rate without waiting
+        // for the UI thread; queuing one update per frame let a slow UI thread (large windows,
+        // WebGL pages) fall further and further behind, so the page lagged more and more.
+        // Frames arriving while an update is pending only refresh the buffer it will show.
+        private bool _uiUpdatePending;
+
+        // NEXZEN_RENDER_TRACE=1: once a second, frames painted by CEF vs shown, and copy times.
+        private static readonly bool s_renderTrace = Environment.GetEnvironmentVariable("NEXZEN_RENDER_TRACE") == "1";
+        private readonly System.Diagnostics.Stopwatch _traceClock = System.Diagnostics.Stopwatch.StartNew();
+        private int _tracePainted, _traceShown;
+        private double _traceCefCopyMs, _traceUiCopyMs, _traceUiWaitMs;
+        private long _traceQueuedAt;
+
+        private void TraceSecond()
+        {
+            if (_traceClock.ElapsedMilliseconds < 1000)
+                return;
+            Console.WriteLine($"[RenderTrace] {_bufferWidth}x{_bufferHeight} painted={_tracePainted}/s shown={_traceShown}/s " +
+                $"cefCopy={(_tracePainted > 0 ? _traceCefCopyMs / _tracePainted : 0):0.0}ms " +
+                $"uiCopy={(_traceShown > 0 ? _traceUiCopyMs / _traceShown : 0):0.0}ms " +
+                $"uiWait={(_traceShown > 0 ? _traceUiWaitMs / _traceShown : 0):0.0}ms");
+            _tracePainted = _traceShown = 0;
+            _traceCefCopyMs = _traceUiCopyMs = _traceUiWaitMs = 0;
+            _traceClock.Restart();
+        }
+        private int _bufferWidth;
+        private int _bufferHeight;
+
         public Task Render(IntPtr buffer, int width, int height, CefRectangle[] dirtyRects)
         {
             // When browser size changed - we just skip frame updating.
@@ -91,34 +119,66 @@ namespace Xilium.CefGlue.Common.Helpers
 
                 var imageBuffer = _viewAccessor.SafeMemoryMappedViewHandle;
 
+                var copyStart = s_renderTrace ? System.Diagnostics.Stopwatch.GetTimestamp() : 0;
                 // copy pixels to our buffer, which we will then use to update the bitmap (on the UI thread)
                 unsafe
                 {
                     Buffer.MemoryCopy(buffer.ToPointer(), imageBuffer.DangerousGetHandle().ToPointer(), (long)imageBuffer.ByteLength, byteCount);
                 }
+                _bufferWidth = width;
+                _bufferHeight = height;
+                if (s_renderTrace)
+                {
+                    _tracePainted++;
+                    _traceCefCopyMs += System.Diagnostics.Stopwatch.GetElapsedTime(copyStart).TotalMilliseconds;
+                    TraceSecond();
+                }
+
+                if (_uiUpdatePending)
+                {
+                    return Task.CompletedTask; // the queued update will show this newer frame
+                }
+                _uiUpdatePending = true;
+                if (s_renderTrace)
+                    _traceQueuedAt = System.Diagnostics.Stopwatch.GetTimestamp();
 
                 return ExecuteInUIThread(() =>
                 {
                     lock (_renderLock)
                     {
+                        _uiUpdatePending = false;
+                        var frameWidth = _bufferWidth;
+                        var frameHeight = _bufferHeight;
+
                         // quick size check - actual browser size changed?
-                        if (width != ScaledWidth || height != ScaledHeight)
+                        if (frameWidth != ScaledWidth || frameHeight != ScaledHeight)
                         {
                             return;
                         }
 
-                        if (imageBuffer.IsInvalid || imageBuffer.IsClosed)
+                        var latestBuffer = _viewAccessor?.SafeMemoryMappedViewHandle;
+                        if (latestBuffer == null || latestBuffer.IsInvalid || latestBuffer.IsClosed)
                         {
                             // buffer is not valid anymore, bail-out
                             return;
                         }
 
-                        if (RenderedWidth != width || RenderedHeight != height)
+                        if (RenderedWidth != frameWidth || RenderedHeight != frameHeight)
                         {
-                            CreateBitmap(width, height);
+                            CreateBitmap(frameWidth, frameHeight);
                         }
 
-                        InnerRender(width, height, bytesPerPixel, dirtyRects, imageBuffer.DangerousGetHandle());
+                        var uiStart = s_renderTrace ? System.Diagnostics.Stopwatch.GetTimestamp() : 0;
+                        if (s_renderTrace)
+                            _traceUiWaitMs += System.Diagnostics.Stopwatch.GetElapsedTime(_traceQueuedAt, uiStart).TotalMilliseconds;
+                        // Frames may have been merged: copy the whole frame, not just this one's dirty rects.
+                        InnerRender(frameWidth, frameHeight, BytesPerPixel,
+                            new[] { new CefRectangle(0, 0, frameWidth, frameHeight) }, latestBuffer.DangerousGetHandle());
+                        if (s_renderTrace)
+                        {
+                            _traceShown++;
+                            _traceUiCopyMs += System.Diagnostics.Stopwatch.GetElapsedTime(uiStart).TotalMilliseconds;
+                        }
                     }
                 });
             }

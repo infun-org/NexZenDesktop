@@ -669,7 +669,9 @@ public partial class MainWindow : Window
         // Create initial tab
         if (!_isIndependentWindow)
             StartupTimer.MarkOnce("first tab add");
-        _viewModel?.AddTab(initialUrl ?? "https://google.com");
+        // NEXZEN_START_URL: open this page in the first tab (testing / debugging).
+        var startUrl = _isIndependentWindow ? null : Environment.GetEnvironmentVariable("NEXZEN_START_URL");
+        _viewModel?.AddTab(initialUrl ?? (string.IsNullOrWhiteSpace(startUrl) ? "https://google.com" : startUrl));
         if (!_isIndependentWindow)
             StartupTimer.MarkOnce("MainWindow constructor done");
     }
@@ -949,6 +951,10 @@ public partial class MainWindow : Window
             if (!string.IsNullOrEmpty(env) && int.TryParse(env, out int parsed) && parsed > 0)
             {
                 rate = parsed;
+            }
+            else if (Xilium.CefGlue.Common.GpuPaint.Enabled)
+            {
+                rate = Xilium.CefGlue.Common.GpuPaint.FrameRate;
             }
             else if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux))
             {

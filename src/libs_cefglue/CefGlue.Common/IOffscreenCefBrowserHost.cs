@@ -13,6 +13,8 @@ namespace Xilium.CefGlue.Common
 
         void HandleViewPaint(IntPtr buffer, int width, int height, CefRectangle[] dirtyRects, bool isPopup);
 
+        void HandleAcceleratedPaint(CefAcceleratedPaintInfo info, bool isPopup);
+
         void HandleImeCompositionRangeChanged(CefBrowser browser, CefRange selectedRange, CefRectangle[] characterBounds);
 
         void HandleStartDragging(CefBrowser browser, CefDragData dragData, CefDragOperationsMask allowedOps, int x, int y);

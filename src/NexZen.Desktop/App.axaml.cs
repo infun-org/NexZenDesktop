@@ -394,6 +394,7 @@ public partial class App : Avalonia.Application
     public override void OnFrameworkInitializationCompleted()
     {
         StartupTimer.Mark("Avalonia framework ready");
+        Xilium.CefGlue.Avalonia.Platform.GpuPaintPlatform.Verify();
         var services = new ServiceCollection();
 
         // 1. Database: one fixed file, no longer relative to the working directory.

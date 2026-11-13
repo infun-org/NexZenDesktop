@@ -281,7 +281,16 @@ class Program
         // WmClass ties the window to nexzen-desktop.desktop (StartupWMClass=NexZen) in the
         // taskbar and app menu; the default is the executable name, "NexZen.Desktop".
         return builder.UsePlatformDetect()
-            .With(new X11PlatformOptions { EnableIme = true, WmClass = "NexZen" })
+            .With(new X11PlatformOptions
+            {
+                EnableIme = true,
+                WmClass = "NexZen",
+                // GPU page painting imports CEF's dmabuf frames with EGL, so Avalonia must render
+                // through EGL rather than GLX (falls back to GLX/software if EGL is unavailable).
+                RenderingMode = Xilium.CefGlue.Common.GpuPaint.Enabled
+                    ? new[] { X11RenderingMode.Egl, X11RenderingMode.Glx, X11RenderingMode.Software }
+                    : new[] { X11RenderingMode.Glx, X11RenderingMode.Software }
+            })
             .WithInterFont()
             .LogToTrace();
     }

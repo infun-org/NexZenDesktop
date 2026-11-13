@@ -21,6 +21,8 @@
 
   <ItemGroup>
     <PackageReference PrivateAssets="all" Include="Avalonia" />
+    <!-- GpuPaintView draws CEF's GPU frames inside Avalonia's Skia renderer. -->
+    <PackageReference PrivateAssets="all" Include="Avalonia.Skia" />
   </ItemGroup>
 
   <ItemGroup>

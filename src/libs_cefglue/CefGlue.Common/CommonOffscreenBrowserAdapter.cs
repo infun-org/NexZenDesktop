@@ -350,6 +350,12 @@ namespace Xilium.CefGlue.Common
 
             // Find the window that's hosting us
             windowInfo.SetAsWindowless(hostViewHandle, Control.RenderSurface.AllowsTransparency);
+            if (GpuPaint.Enabled)
+            {
+                windowInfo.SharedTextureEnabled = true; // frames arrive in OnAcceleratedPaint as dmabufs
+                if (Settings.WindowlessFrameRate <= 0 || Settings.WindowlessFrameRate > GpuPaint.FrameRate)
+                    Settings.WindowlessFrameRate = GpuPaint.FrameRate;
+            }
         }
 
         protected override void OnBrowserHostCreated(CefBrowserHost browserHost)
@@ -525,6 +531,17 @@ namespace Xilium.CefGlue.Common
             {
                 renderHandler?.Render(buffer, width, height, dirtyRects)
                               .ContinueWith(t => HandleException(ScopeName, t.Exception), TaskContinuationOptions.OnlyOnFaulted);
+            });
+        }
+
+        void IOffscreenCefBrowserHost.HandleAcceleratedPaint(CefAcceleratedPaintInfo info, bool isPopup)
+        {
+            WithErrorHandling(nameof(IOffscreenCefBrowserHost.HandleAcceleratedPaint), () =>
+            {
+                if (isPopup)
+                    Popup.HandleAcceleratedPaint(info);
+                else
+                    Control.HandleAcceleratedPaint(info);
             });
         }
 

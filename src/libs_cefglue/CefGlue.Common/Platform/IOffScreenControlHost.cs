@@ -27,6 +27,9 @@ namespace Xilium.CefGlue.Common.Platform
         event Action<CefMouseEvent, CefDragOperationsMask> Drop;
 
         event Action<float> ScreenInfoChanged;
+
+        /// <summary>A frame shared as a GPU texture (GpuPaint). Called on CEF's UI thread.</summary>
+        void HandleAcceleratedPaint(CefAcceleratedPaintInfo info) { }
         event Action<bool> VisibilityChanged;
 
         void Focus();

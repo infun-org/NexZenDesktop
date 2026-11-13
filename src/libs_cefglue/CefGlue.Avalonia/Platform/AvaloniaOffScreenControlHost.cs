@@ -266,9 +266,31 @@ namespace Xilium.CefGlue.Avalonia.Platform
             DragDrop.SetAllowDrop(viewbox, true);
             DragDrop.SetAllowDrop(image, true);
             _cursorTarget = image;
-            SetContent(viewbox);
+            if (Xilium.CefGlue.Common.GpuPaint.Enabled)
+            {
+                // Frames come as GPU textures (HandleAcceleratedPaint) and are drawn by a GL view.
+                // A transparent panel takes the pointer, cursor and drops as the image did. The
+                // image stays underneath for frames painted the copying way (a browser created
+                // after GPU painting was switched off).
+                _gpuView = new GpuPaintView { IsHitTestVisible = false };
+                viewbox.IsHitTestVisible = false;
+                var surface = new Panel { Background = Brushes.Transparent };
+                surface.Children.Add(viewbox);
+                surface.Children.Add(_gpuView);
+                DragDrop.SetAllowDrop(surface, true);
+                _cursorTarget = surface;
+                SetContent(surface);
+            }
+            else
+            {
+                SetContent(viewbox);
+            }
             RenderSurface = new AvaloniaRenderSurface(image);
         }
+
+        private readonly GpuPaintView _gpuView;
+
+        public void HandleAcceleratedPaint(CefAcceleratedPaintInfo info) => _gpuView?.Submit(info);
 
         public OffScreenRenderSurface RenderSurface { get; }
 

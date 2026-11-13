@@ -56,8 +56,22 @@ namespace Xilium.CefGlue.Common.InternalHandlers
             _owner.HandlePopupSizeChange(rect);
         }
 
+        private int _acceleratedFrames;
+
         protected override void OnAcceleratedPaint(CefBrowser browser, CefPaintElementType type, CefRectangle[] dirtyRects, IntPtr sharedHandle)
         {
+            if (!GpuPaint.Enabled)
+                return;
+            var info = CefAcceleratedPaintInfo.FromNative(sharedHandle);
+            // The fds in info are only valid during this callback; the view duplicates them.
+            _owner.HandleAcceleratedPaint(info, type == CefPaintElementType.Popup);
+            // Report what CEF delivers (first frames, then once every 600).
+            if (_acceleratedFrames++ < 2 || _acceleratedFrames % 600 == 0)
+            {
+                var plane = info.Planes.Length > 0 ? info.Planes[0] : default;
+                Console.WriteLine($"[GpuPaint] frame#{_acceleratedFrames} type={type} {info.Width}x{info.Height} format={info.Format} " +
+                    $"planes={info.Planes.Length} fd={plane.Fd} stride={plane.Stride} offset={plane.Offset} modifier=0x{info.Modifier:X}");
+            }
         }
 
         protected override void OnPaint(CefBrowser browser, CefPaintElementType type, CefRectangle[] dirtyRects, IntPtr buffer, int width, int height)
