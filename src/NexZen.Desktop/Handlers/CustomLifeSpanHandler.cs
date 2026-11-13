@@ -77,7 +77,7 @@ namespace NexZen.Desktop.Handlers
         /// Makes the pop-up a normal (windowed) CEF window at the size and place the page asked
         /// for, instead of inheriting the opener's windowless (off-screen) mode.
         /// </summary>
-        private static bool ConfigureNativePopup(CefWindowInfo windowInfo, CefPopupFeatures features)
+        internal static bool ConfigureNativePopup(CefWindowInfo windowInfo, CefPopupFeatures features)
         {
             try
             {

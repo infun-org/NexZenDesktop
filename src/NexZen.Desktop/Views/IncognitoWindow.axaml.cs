@@ -580,7 +580,16 @@ public partial class IncognitoWindow : Window
                 or CefWindowOpenDisposition.NewWindow;
             if (!newSurface)
                 return false;
-            // A windowless browser cannot host CEF's own popup window.
+            // Sign-in pop-ups (Google, Apple, …) report back through window.opener, so a
+            // clicked window.open pop-up gets CEF's own window, which keeps the opener and the
+            // incognito request context (see CustomLifeSpanHandler).
+            if (targetDisposition == CefWindowOpenDisposition.NewPopup && userGesture
+                && Handlers.CustomLifeSpanHandler.ConfigureNativePopup(windowInfo, popupFeatures))
+            {
+                Console.WriteLine($"[Popup] incognito native pop-up window (keeps opener) to {targetUrl}");
+                return false;
+            }
+            // Other new windows and tabs open as incognito tabs/windows of NexZen.
             if (!PopupBrowserWindow.TryNormalize(targetUrl, out var target))
                 return true;
 

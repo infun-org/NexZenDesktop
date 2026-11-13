@@ -25,8 +25,25 @@ namespace Xilium.CefGlue.Avalonia
         public override void Dispose()
         {
             base.Dispose();
-            _bitmap?.Dispose();
+            var bitmap = _bitmap;
             _bitmap = null;
+            if (bitmap == null)
+                return;
+
+            // Detach before disposing: if the Image still shows the bitmap when the next frame is
+            // composed, Image.Render throws ObjectDisposedException and takes the app down
+            // (seen when closing the main window right after its browsers were disposed).
+            void Release()
+            {
+                if (ReferenceEquals(Image.Source, bitmap))
+                    Image.Source = null;
+                bitmap.Dispose();
+            }
+
+            if (Dispatcher.UIThread.CheckAccess())
+                Release();
+            else
+                Dispatcher.UIThread.Post(Release);
         }
 
         private Image Image { get; }
@@ -47,9 +64,11 @@ namespace Xilium.CefGlue.Avalonia
         protected override void CreateBitmap(int width, int height)
         {
             // TODO handle transparency
-            _bitmap?.Dispose();
+            // Show the new bitmap before disposing the old one, so the Image never renders a disposed bitmap.
+            var previous = _bitmap;
             _bitmap = new WriteableBitmap(new PixelSize(width, height), new Vector(DefaultDpi, DefaultDpi), PixelFormat.Bgra8888, AlphaFormat.Opaque);
             Image.Source = _bitmap;
+            previous?.Dispose();
         }
 
         protected override Action BeginBitmapUpdate()
