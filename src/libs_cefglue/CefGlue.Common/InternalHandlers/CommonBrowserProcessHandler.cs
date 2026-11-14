@@ -33,6 +33,14 @@ namespace Xilium.CefGlue.Common.InternalHandlers
             _handler?.HandleContextInitialized();
         }
 
+        protected override bool OnAlreadyRunningAppRelaunch(CefCommandLine commandLine, string currentDirectory)
+        {
+            var handler = CefRuntimeLoader.AppRelaunched;
+            if (handler == null) return false; // CEF opens a default Chrome window
+            try { return handler(commandLine.GetArgv() ?? System.Array.Empty<string>()); }
+            catch { return true; }
+        }
+
         protected override void OnScheduleMessagePumpWork(long delayMs)
         {
             _handler?.HandleScheduleMessagePumpWork(delayMs);

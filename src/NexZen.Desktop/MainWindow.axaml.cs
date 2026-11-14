@@ -200,6 +200,8 @@ public partial class MainWindow : Window
         if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("NEXZEN_TASK_ID")))
             return;
         Title = NexZen.Application.Services.WindowTitle.Compose(_workspaceName, _viewModel?.ActiveTab?.Title);
+        if (_incognito)
+            Title = "Incognito - " + Title;
     }
     private int _historySlideToken;
     private int _slideOutToken;
@@ -241,9 +243,68 @@ public partial class MainWindow : Window
     {
     }
 
-    private MainWindow(MainViewModel? viewModel, string? initialUrl, bool isIndependentWindow)
+    /// <summary>
+    /// An incognito window: the full NexZen window on an in-memory CEF profile shared by all
+    /// incognito windows (gone when the last one closes); no history, downloads list, saved
+    /// passwords or session restore.
+    /// </summary>
+    internal static MainWindow CreateIncognito(MainViewModel viewModel, string initialUrl)
+    {
+        viewModel.IsIncognito = true;
+        return new MainWindow(viewModel, initialUrl, true, incognito: true);
+    }
+
+    private readonly bool _incognito;
+
+    /// <summary>
+    /// Incognito marks that never cover the page: a purple frame around the window and a small
+    /// "Incognito" badge at the top right (both ignore the mouse).
+    /// </summary>
+    private void AddIncognitoMarks(Grid grid)
+    {
+        var accent = Avalonia.Media.Color.Parse("#8B5CF6");
+        var frame = new Border
+        {
+            BorderBrush = new Avalonia.Media.SolidColorBrush(accent),
+            BorderThickness = new Thickness(3),
+            IsHitTestVisible = false,
+            ZIndex = 10_000,
+        };
+        var badge = new Border
+        {
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#E6201A2E")),
+            BorderBrush = new Avalonia.Media.SolidColorBrush(accent),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(12),
+            Padding = new Thickness(10, 3, 12, 4),
+            Margin = new Thickness(0, 8, 14, 0),
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
+            IsHitTestVisible = false,
+            Opacity = 0.92,
+            ZIndex = 10_001,
+            Child = new TextBlock
+            {
+                Text = "🕶  Incognito",
+                FontSize = 12,
+                FontWeight = Avalonia.Media.FontWeight.SemiBold,
+                Foreground = Avalonia.Media.Brushes.White,
+            },
+        };
+        ToolTip.SetTip(badge, "Incognito window: history, downloads and passwords are not saved; cookies are cleared when the last incognito window closes.");
+        grid.Children.Add(frame);
+        grid.Children.Add(badge);
+    }
+
+    private MainWindow(MainViewModel? viewModel, string? initialUrl, bool isIndependentWindow, bool incognito = false)
     {
         _isIndependentWindow = isIndependentWindow;
+        _incognito = incognito;
+        if (incognito)
+        {
+            Views.IncognitoSession.RegisterWindow();
+            Closed += (_, _) => Views.IncognitoSession.ReleaseWindow();
+        }
         if (!isIndependentWindow)
             StartupTimer.MarkOnce("MainWindow XAML load");
         InitializeComponent();
@@ -251,10 +312,11 @@ public partial class MainWindow : Window
         {
             StartupTimer.MarkOnce("MainWindow XAML loaded");
             Opened += (_, _) => StartupTimer.MarkOnce("MainWindow opened (visible)");
-            // Bookmarks, history, downloads and saved passwords load once the window is up.
-            Opened += (_, _) => Dispatcher.UIThread.Post(() => _ = _viewModel?.EnsureInitialDataLoadedAsync(),
-                DispatcherPriority.Background);
         }
+        // Bookmarks, history, downloads and saved passwords load once the window is up
+        // (every window: independent windows have their own view model).
+        Opened += (_, _) => Dispatcher.UIThread.Post(() => _ = _viewModel?.EnsureInitialDataLoadedAsync(),
+            DispatcherPriority.Background);
         _passwordCapturePollTimer.Tick += async (_, _) => await PollPasswordCaptureQueuesAsync();
         _passwordCapturePollTimer.Start();
         Closed += (_, _) => _passwordCapturePollTimer.Stop();
@@ -264,6 +326,8 @@ public partial class MainWindow : Window
             Opened += async (_, _) => await CheckPasswordVaultSetupReminderAsync();
         if (this.FindControl<Grid>("MainGrid") is { } findGrid)
             _findUi.Mount(findGrid);
+        if (_incognito && this.FindControl<Grid>("MainGrid") is { } incognitoGrid)
+            AddIncognitoMarks(incognitoGrid);
         
         var taskId = Environment.GetEnvironmentVariable("NEXZEN_TASK_ID");
         if (!string.IsNullOrEmpty(taskId))
@@ -1201,7 +1265,12 @@ public partial class MainWindow : Window
             return;
 
         StartupTimer.MarkOnce("first tab browser create");
-        var browser = new AvaloniaCefBrowser { Address = BlankPage.ForBrowser(tab.Url) };
+        if (_incognito)
+            Views.IncognitoSession.HoldBrowser();
+        var browser = _incognito
+            ? new AvaloniaCefBrowser(() => Views.IncognitoSession.BorrowForBrowser())
+            : new AvaloniaCefBrowser();
+        browser.Address = BlankPage.ForBrowser(tab.Url);
         WebAudioDecodeShim.Attach(browser);
         _findUi.Attach(browser);
         state.Browser = browser;
@@ -1360,6 +1429,8 @@ public partial class MainWindow : Window
         }, () =>
         {
             Program.StartupLog.Write($"[MainWindowClose] CEF before-close tab={tab.Id}");
+            if (_incognito)
+                Views.IncognitoSession.BrowserClosed();
             Dispatcher.UIThread.Post(() => DetachBrowserControlAfterClose(tab.Id, browser));
         }, (sourceUrl, _) =>
         {
@@ -1401,7 +1472,8 @@ public partial class MainWindow : Window
             if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
                 || url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
             {
-                e.Frame.ExecuteJavaScript(PasswordCaptureBridge.ObserverScript, url, 1);
+                if (!_incognito)
+                    e.Frame.ExecuteJavaScript(PasswordCaptureBridge.ObserverScript, url, 1);
                 if (e.Frame.IsMain)
                 {
                     Program.StartupLog.Write($"[PasswordCapture] observer injection requested main={e.Frame.IsMain} host={new Uri(url).Host}");
@@ -2119,7 +2191,7 @@ public partial class MainWindow : Window
         bool opened;
         try
         {
-            opened = Views.PopupBrowserWindow.Open(this, tab.Url, _viewModel);
+            opened = OpenWindowLikeThis(tab.Url);
         }
         catch (Exception ex)
         {
@@ -2172,9 +2244,9 @@ public partial class MainWindow : Window
         if (copy == null)
             return;
 
-        if (copy.IsImage && Views.PopupBrowserWindow.Open(this, copy.ImageUrl, _viewModel))
+        if (copy.IsImage && OpenWindowLikeThis(copy.ImageUrl))
             return;
-        if (Views.PopupBrowserWindow.Open(this, copy.LinkUrl, _viewModel))
+        if (OpenWindowLikeThis(copy.LinkUrl))
             return;
 
         ShowCopyNotification(
@@ -3394,8 +3466,12 @@ public partial class MainWindow : Window
     private void OpenIncognitoWindow()
     {
         CloseSuperMenu();
-        Views.IncognitoWindow.Open(this, _viewModel);
+        Views.PopupBrowserWindow.OpenIncognito(this, null);
     }
+
+    /// <summary>"Open in new window": incognito windows open incognito windows.</summary>
+    private bool OpenWindowLikeThis(string? url) =>
+        _incognito ? Views.PopupBrowserWindow.OpenIncognito(this, url) : Views.PopupBrowserWindow.Open(this, url, _viewModel);
 
     /// <summary>
     /// Site privacy "Sound": mutes the tab on a site set to Mute, and unmutes it again when it

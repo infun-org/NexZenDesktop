@@ -238,7 +238,8 @@ public partial class MainViewModel : ObservableObject
             State = download.State,
             Timestamp = DateTime.Now
         };
-        _ = _downloadRepository.AddAsync(record);
+        if (!IsIncognito)
+            _ = _downloadRepository.AddAsync(record);
 
         download.PropertyChanged += async (s, e) =>
         {
@@ -366,6 +367,7 @@ public partial class MainViewModel : ObservableObject
 
     private async Task UpdateDownloadRecordAsync(DownloadItemViewModel download)
     {
+        if (IsIncognito) return;
         var record = await _downloadRepository.GetByIdAsync(download.Id);
         if (record != null)
         {
@@ -548,6 +550,9 @@ public partial class MainViewModel : ObservableObject
     }
 
     private Task? _initialLoad;
+
+    /// <summary>Incognito window: visits and downloads are not written to the database.</summary>
+    public bool IsIncognito { get; set; }
 
     /// <summary>
     /// Reads bookmarks, downloads, history and saved passwords once. The main window starts it right
@@ -794,7 +799,7 @@ public partial class MainViewModel : ObservableObject
 
     public async Task RecordVisitAsync(string? title, string? url)
     {
-        if (string.IsNullOrWhiteSpace(url))
+        if (string.IsNullOrWhiteSpace(url) || IsIncognito)
             return;
         if (!url.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
             && !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))

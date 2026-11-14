@@ -24,12 +24,21 @@ public static class PopupBrowserWindow
         return Open(owner, url, independentViewModel, out _);
     }
 
-    private static bool Open(Window? owner, string? url, MainViewModel independentViewModel, out MainWindow window)
+    /// <summary>A full NexZen window in incognito mode (shared in-memory profile, nothing saved).</summary>
+    public static bool OpenIncognito(Window? owner, string? url)
+    {
+        if (App.ServiceProvider is not { } services)
+            return false;
+        var vm = ActivatorUtilities.CreateInstance<MainViewModel>(services, false);
+        return Open(owner, string.IsNullOrWhiteSpace(url) ? "about:blank" : url, vm, out _, incognito: true);
+    }
+
+    private static bool Open(Window? owner, string? url, MainViewModel independentViewModel, out MainWindow window, bool incognito = false)
     {
         window = null!;
         if (!TryNormalize(url, out var target))
             return false;
-        window = new MainWindow(independentViewModel, target);
+        window = incognito ? MainWindow.CreateIncognito(independentViewModel, target) : new MainWindow(independentViewModel, target);
         if (owner != null)
         {
             window.WindowStartupLocation = WindowStartupLocation.Manual;

@@ -536,6 +536,15 @@ public partial class App : Avalonia.Application
             StartupTimer.Mark("MainWindow create");
             var mainWindow = new MainWindow();
             desktop.MainWindow = mainWindow;
+            if (Program.WantsIncognito(desktop.Args ?? Array.Empty<string>()))
+            {
+                void OpenIncognitoOnce(object? sender, EventArgs e)
+                {
+                    mainWindow.Opened -= OpenIncognitoOnce;
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() => Program.OpenWindowFor(desktop.Args ?? Array.Empty<string>()));
+                }
+                mainWindow.Opened += OpenIncognitoOnce;
+            }
             StartupTimer.Mark("MainWindow created");
             // NexShare's window/tray hooks are not needed to show the browser: attach them last.
             void AttachNexShareOnce(object? sender, EventArgs e)

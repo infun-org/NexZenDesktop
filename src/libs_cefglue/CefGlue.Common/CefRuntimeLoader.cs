@@ -78,7 +78,15 @@ namespace Xilium.CefGlue.Common
                 exeFileName = "CefGlue";
             }
             
-            CefRuntime.Initialize(new CefMainArgs(new[] { exeFileName }), settings, new BrowserCefApp(customSchemes, flags, browserProcessHandler), IntPtr.Zero);
+            try
+            {
+                CefRuntime.Initialize(new CefMainArgs(new[] { exeFileName }.Concat(LaunchSwitches ?? Array.Empty<string>()).ToArray()), settings, new BrowserCefApp(customSchemes, flags, browserProcessHandler), IntPtr.Zero);
+            }
+            catch (InvalidOperationException) when (CefRuntime.GetExitCode() == 24 /* CEF_RESULT_CODE_NORMAL_EXIT_PROCESS_NOTIFIED */)
+            {
+                ForwardedToRunningInstance = true;
+                throw;
+            }
 
             if (customSchemes != null)
             {
@@ -101,6 +109,26 @@ namespace Xilium.CefGlue.Common
         }
 
         private static System.Threading.Tasks.Task _backgroundLoad;
+
+        /// <summary>
+        /// The app was started again while running (same root cache path): CEF hands the new launch's
+        /// command line (argv, program first) to this process. Return true when handled; without a handler CEF opens a plain
+        /// Chrome-style window. Called on CEF's UI thread.
+        /// </summary>
+        public static Func<string[], bool> AppRelaunched { get; set; }
+
+        /// <summary>
+        /// Extra switches for this launch's CEF command line. A second launch forwards its command line
+        /// to the running instance, so this is how the app's own arguments reach <see cref="AppRelaunched"/>.
+        /// Use switches CEF does not know (they are ignored by Chromium).
+        /// </summary>
+        public static string[] LaunchSwitches { get; set; } = Array.Empty<string>();
+
+        /// <summary>True when initialization failed because the launch was passed to a running instance.</summary>
+        public static bool ForwardedToRunningInstance { get; private set; }
+
+        /// <summary>The background initialization (null if it was not started); faults if CEF failed.</summary>
+        public static System.Threading.Tasks.Task BackgroundLoad => _backgroundLoad;
 
         /// <summary>
         /// Starts CefRuntime.Initialize (≈1 s) on a background thread right away, so it overlaps the

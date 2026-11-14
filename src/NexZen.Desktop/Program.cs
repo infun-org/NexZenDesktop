@@ -1,3 +1,4 @@
+using System.Linq;
 using Avalonia;
 using System;
 using System.Collections.Generic;
@@ -169,8 +170,30 @@ class Program
             // CefRuntime.Initialize (~1 s) and EF Core's first context (~0.4 s: internal services,
             // model, query pipeline) run on background threads while Avalonia and the XAML load,
             // instead of on the UI thread when the first tab / the view model needs them.
+            // Started again while running (e.g. "Open New Window" in the taskbar): CEF passes the launch
+            // to this process. Open a NexZen window instead of CEF's default Chrome-style window.
+            // "--incognito" (the desktop entry's "New Incognito Window") opens an incognito window.
+            Xilium.CefGlue.Common.CefRuntimeLoader.AppRelaunched = argv =>
+            {
+                var forwarded = FromLaunchSwitches(argv);
+                Console.WriteLine($"[Relaunch] new {(WantsIncognito(forwarded) ? "incognito " : "")}window requested");
+                Avalonia.Threading.Dispatcher.UIThread.Post(() => OpenWindowFor(forwarded));
+                return true;
+            };
+            Xilium.CefGlue.Common.CefRuntimeLoader.LaunchSwitches = ToLaunchSwitches(args);
             if (Environment.GetEnvironmentVariable("NEXZEN_CEF_SYNC_INIT") != "1")
+            {
                 Xilium.CefGlue.Common.CefRuntimeLoader.LoadInBackground();
+                // A second launch hands its arguments to the running NexZen and must not go on.
+                Xilium.CefGlue.Common.CefRuntimeLoader.BackgroundLoad?.ContinueWith(t =>
+                {
+                    if (Xilium.CefGlue.Common.CefRuntimeLoader.ForwardedToRunningInstance)
+                    {
+                        StartupLog.Write("NexZen is already running: opened a new window there");
+                        Environment.Exit(0);
+                    }
+                }, System.Threading.Tasks.TaskContinuationOptions.OnlyOnFaulted);
+            }
             NexZen.Infrastructure.Data.DatabaseWarmUp.Start();
             StartupLog.Write("CEF initialized, starting Avalonia");
             StartupTimer.Mark("Avalonia start");
@@ -264,6 +287,34 @@ class Program
             // A broken manifest must not stop the browser; load the extension as it is.
             StartupLog.Write($"extension ruleset trim failed for {directory}: {ex.Message}");
         }
+    }
+
+    // Our arguments ride along on CEF's command line as switches Chromium does not know, so a
+    // second launch can hand them to the running NexZen (and Chromium never acts on them itself:
+    // a plain --incognito would make CEF's whole profile off the record).
+    private const string ArgSwitch = "--nexzen-arg=";
+
+    private static string[] ToLaunchSwitches(string[] args) =>
+        args.Select(a => ArgSwitch + Uri.EscapeDataString(a)).ToArray();
+
+    private static string[] FromLaunchSwitches(string[] argv) =>
+        argv.Where(a => a.StartsWith(ArgSwitch, StringComparison.Ordinal))
+            .Select(a => Uri.UnescapeDataString(a[ArgSwitch.Length..])).ToArray();
+
+    public static bool WantsIncognito(string[] args) =>
+        args.Any(a => a is "--incognito" or "--private-window");
+
+    /// <summary>A launch while NexZen runs: a new NexZen window (or incognito window), at the URL if one was given.</summary>
+    internal static void OpenWindowFor(string[] args)
+    {
+        var url = args.FirstOrDefault(a => !a.StartsWith("-", StringComparison.Ordinal));
+        if (WantsIncognito(args))
+        {
+            NexZen.Desktop.Views.PopupBrowserWindow.OpenIncognito(null, url);
+            return;
+        }
+        if (!NexZen.Desktop.Views.PopupBrowserWindow.Open(null, url ?? "https://google.com", null))
+            NexZen.Desktop.Views.PopupBrowserWindow.Open(null, "https://google.com", null);
     }
 
     // Native Wayland is opt-in only. NEXZEN_FORCE_X11=1 still forces X11.

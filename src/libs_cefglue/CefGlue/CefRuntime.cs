@@ -248,6 +248,9 @@
         /// </summary>
         /// <param name="skipGC">If set to <see langword="false"/> perform GC
         /// and wait for pending finalizers.</param>
+        /// <summary>Exit code after a failed Initialize (e.g. 24 = launch passed to the running instance).</summary>
+        public static int GetExitCode() => libcef.get_exit_code();
+
         public static void Shutdown(bool skipGC = false)
         {
             if (!_initialized) return;

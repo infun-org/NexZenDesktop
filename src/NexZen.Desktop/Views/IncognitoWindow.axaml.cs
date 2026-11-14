@@ -683,11 +683,21 @@ internal static class IncognitoSession
         {
             lock (Gate)
             {
-                _context ??= CefRequestContext.CreateContext(new CefRequestContextSettings
+                if (_context == null)
                 {
-                    CachePath = string.Empty,
-                    PersistSessionCookies = false
-                }, null);
+                    _context = CefRequestContext.CreateContext(new CefRequestContextSettings
+                    {
+                        CachePath = string.Empty,
+                        PersistSessionCookies = false
+                    }, null);
+                    // Scheme handlers registered at start-up only serve the global context; without this
+                    // the new-tab page (nexzen://newtab/blank.html) fails with ERR_UNKNOWN_URL_SCHEME.
+                    _context.RegisterSchemeHandlerFactory(
+                        NexZen.Desktop.Handlers.NewTabSchemeHandlerFactory.SchemeName,
+                        NexZen.Desktop.Handlers.NewTabSchemeHandlerFactory.Host,
+                        new NexZen.Desktop.Handlers.NewTabSchemeHandlerFactory(
+                            System.IO.Path.Combine(AppContext.BaseDirectory, "NewTab")));
+                }
                 return _context;
             }
         }
