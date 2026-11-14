@@ -179,7 +179,11 @@
                   </DataTemplate>
                 </ListBox.ItemTemplate>
               </ListBox>
-              <Button Grid.Row="1" Classes="Pill BluePill" Content="Offer file" Margin="0,10,0,0" Click="OfferFile_Click"/>
+              <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,10,0,0">
+                <Button Classes="Pill BluePill" Content="Offer file" Click="OfferFile_Click"/>
+                <Button Classes="Pill GreenPill" Content="Mirror phone" Click="MirrorPhone_Click"
+                        ToolTip.Tip="Show the connected phone's screen (asks for confirmation on the phone)"/>
+              </StackPanel>
             </Grid>
           </Border>
         </StackPanel>

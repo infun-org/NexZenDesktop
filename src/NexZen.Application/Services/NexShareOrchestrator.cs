@@ -396,8 +396,34 @@ public class NexShareOrchestrator : INexShareOrchestrator
         OnConnectionStatusChanged?.Invoke(this, "Disconnected");
     }
 
+    public event EventHandler<WireEnvelope>? OnMirrorMessage;
+
+    public string? ConnectedDeviceId => _connectedDeviceId;
+
+    public async Task<bool> SendEnvelopeAsync(WireEnvelope envelope)
+    {
+        var connection = _currentConnection;
+        if (connection == null || !connection.IsConnected) return false;
+        envelope.SenderId = MyDeviceId;
+        try
+        {
+            await connection.SendMessageAsync(envelope);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[NexShare] send {envelope.Type} failed: {ex.Message}");
+            return false;
+        }
+    }
+
     private void Client_OnMessageReceived(object? sender, WireEnvelope e)
     {
+        if (NexZen.Core.NexShare.Mirror.MirrorMessageTypes.IsMirror(e.Type))
+        {
+            OnMirrorMessage?.Invoke(this, e);
+            return;
+        }
         var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
         if (e.Type == NexShareMessageTypes.PeerRefresh)

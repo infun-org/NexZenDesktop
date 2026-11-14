@@ -448,6 +448,18 @@ public partial class NexShareView : UserControl
         vm.SendMessageCommand.Execute(null);
     }
 
+    private async void MirrorPhone_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (DataContext is not NexShareViewModel vm)
+            return;
+        if (!await vm.EnsurePeerForSendAsync())
+            return;
+        if (App.ServiceProvider?.GetService(typeof(NexZen.Core.NexShare.Interfaces.INexShareCrypto))
+            is not NexZen.Core.NexShare.Interfaces.INexShareCrypto crypto)
+            return;
+        new NexZen.Desktop.Mirror.MirrorWindow(vm.Orchestrator, crypto).Show();
+    }
+
     private async void OfferFile_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         if (DataContext is not NexShareViewModel vm)

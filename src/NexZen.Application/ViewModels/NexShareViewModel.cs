@@ -15,6 +15,7 @@ namespace NexZen.Application.ViewModels;
 public partial class NexShareViewModel : ObservableObject
 {
     private readonly INexShareOrchestrator _orchestrator;
+    public INexShareOrchestrator Orchestrator => _orchestrator;
     private readonly ISettingsService _settingsService;
 
     public Action<Action>? UiInvoker { get; set; }

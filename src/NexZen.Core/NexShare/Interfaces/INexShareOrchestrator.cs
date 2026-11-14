@@ -43,4 +43,13 @@ public interface INexShareOrchestrator : IDisposable
 
     /// <summary>Android requestRefresh: peer_refresh to the connected peer, full reset, restart discovery.</summary>
     Task RefreshAsync();
+
+    /// <summary>Screen-mirroring messages (mirror_*) from the connected peer; see NexZen.Core.NexShare.Mirror.</summary>
+    event EventHandler<WireEnvelope>? OnMirrorMessage;
+
+    /// <summary>Device id of the peer on the current connection (after its HELLO), or null.</summary>
+    string? ConnectedDeviceId { get; }
+
+    /// <summary>Sends an envelope on the current connection (SenderId is filled in). False when not connected.</summary>
+    Task<bool> SendEnvelopeAsync(WireEnvelope envelope);
 }

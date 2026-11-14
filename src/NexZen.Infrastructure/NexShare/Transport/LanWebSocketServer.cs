@@ -216,42 +216,56 @@ public class LanWebSocketClientTransport : INexShareTransport
         OnConnected?.Invoke(this, EventArgs.Empty);
         
         var buffer = new byte[65536];
-        
+        // A WebSocket message can span many ReceiveAsync results (EndOfMessage); screen-mirroring
+        // frames are hundreds of KB, so messages are assembled before parsing.
+        using var message = new System.IO.MemoryStream();
+        const int MaxMessageBytes = 64 * 1024 * 1024;
+
         try
         {
             while (_webSocket.State == WebSocketState.Open && !_cts.Token.IsCancellationRequested)
             {
                 var result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), _cts.Token);
-                Console.WriteLine($"[WS-RECV #{n}] frame: type={result.MessageType}, bytes={result.Count}, eom={result.EndOfMessage}, ws.State={_webSocket.State}");
-                
+
                 if (result.MessageType == WebSocketMessageType.Close)
                 {
                     Console.WriteLine($"[WS-RECV #{n}] Close frame received. Closing.");
                     await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
                     break;
                 }
-                
-                if (result.MessageType == WebSocketMessageType.Text)
+
+                if (result.MessageType != WebSocketMessageType.Text)
+                    continue;
+
+                message.Write(buffer, 0, result.Count);
+                if (message.Length > MaxMessageBytes)
                 {
-                    var json = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                    Console.WriteLine($"[WS-RECV #{n}] TEXT payload ({result.Count} bytes): {json}");
-                    try
+                    Console.WriteLine($"[WS-RECV #{n}] Message larger than {MaxMessageBytes} bytes, closing.");
+                    await _webSocket.CloseAsync(WebSocketCloseStatus.MessageTooBig, string.Empty, CancellationToken.None);
+                    break;
+                }
+                if (!result.EndOfMessage)
+                    continue;
+
+                var json = Encoding.UTF8.GetString(message.GetBuffer(), 0, (int)message.Length);
+                message.SetLength(0);
+                try
+                {
+                    var envelope = JsonSerializer.Deserialize<WireEnvelope>(json, _jsonOptions);
+                    if (envelope != null)
                     {
-                        var envelope = JsonSerializer.Deserialize<WireEnvelope>(json, _jsonOptions);
-                        if (envelope != null)
-                        {
-                            Console.WriteLine($"[WS-RECV #{n}] Deserialized: type={envelope.Type}, msgId={envelope.MessageId}");
-                            OnMessageReceived?.Invoke(this, envelope);
-                        }
-                        else
-                        {
-                            Console.WriteLine($"[WS-RECV #{n}] Deserialized envelope is NULL.");
-                        }
+                        if (envelope.Type != "mirror_frame")
+                            Console.WriteLine($"[WS-RECV #{n}] type={envelope.Type} bytes={json.Length} msgId={envelope.MessageId}");
+                        OnMessageReceived?.Invoke(this, envelope);
                     }
-                    catch (Exception parseEx)
+                    else
                     {
-                        Console.WriteLine($"[WS-RECV #{n}] Parse error: {parseEx.Message} | raw={json}");
+                        Console.WriteLine($"[WS-RECV #{n}] Deserialized envelope is NULL.");
                     }
+                }
+                catch (Exception parseEx)
+                {
+                    Console.WriteLine($"[WS-RECV #{n}] Parse error: {parseEx.Message} | raw={(json.Length > 300 ? json[..300] + "…" : json)}");
                 }
             }
             Console.WriteLine($"[WS-RECV #{n}] Loop ended normally. ws.State={_webSocket.State}");
@@ -285,14 +299,25 @@ public class LanWebSocketClientTransport : INexShareTransport
         _webSocket.Dispose();
     }
 
+    private readonly SemaphoreSlim _sendLock = new(1, 1);
+
     public async Task SendMessageAsync(WireEnvelope envelope)
     {
         if (!IsConnected) return;
         
         var json = JsonSerializer.Serialize(envelope, _jsonOptions);
         var bytes = Encoding.UTF8.GetBytes(json);
-        
-        await _webSocket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+
+        // WebSocket allows one SendAsync at a time.
+        await _sendLock.WaitAsync();
+        try
+        {
+            await _webSocket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+        }
+        finally
+        {
+            _sendLock.Release();
+        }
     }
 
     public void Dispose()
