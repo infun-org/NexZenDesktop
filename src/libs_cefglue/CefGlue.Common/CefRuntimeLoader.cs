@@ -100,8 +100,30 @@ namespace Xilium.CefGlue.Common
             yield return Path.Combine(baseDirectory, BrowserProcessFileName);
         }
 
+        private static System.Threading.Tasks.Task _backgroundLoad;
+
+        /// <summary>
+        /// Starts CefRuntime.Initialize (≈1 s) on a background thread right away, so it overlaps the
+        /// UI start-up instead of blocking the first browser. With the multi-threaded message loop CEF
+        /// runs its UI on its own thread, so the initializing thread does not matter.
+        /// </summary>
+        public static void LoadInBackground()
+        {
+            var init = _delayedInitialization;
+            if (init == null || _backgroundLoad != null) return;
+            _delayedInitialization = null;
+            _backgroundLoad = System.Threading.Tasks.Task.Factory.StartNew(() => init(null),
+                System.Threading.CancellationToken.None, System.Threading.Tasks.TaskCreationOptions.LongRunning,
+                System.Threading.Tasks.TaskScheduler.Default);
+        }
+
         internal static void Load(BrowserProcessHandler browserProcessHandler = null)
         {
+            if (_backgroundLoad != null)
+            {
+                _backgroundLoad.GetAwaiter().GetResult();
+                return;
+            }
             if (_delayedInitialization != null)
             {
                 _delayedInitialization.Invoke(browserProcessHandler);

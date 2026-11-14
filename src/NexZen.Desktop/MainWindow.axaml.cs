@@ -251,6 +251,9 @@ public partial class MainWindow : Window
         {
             StartupTimer.MarkOnce("MainWindow XAML loaded");
             Opened += (_, _) => StartupTimer.MarkOnce("MainWindow opened (visible)");
+            // Bookmarks, history, downloads and saved passwords load once the window is up.
+            Opened += (_, _) => Dispatcher.UIThread.Post(() => _ = _viewModel?.EnsureInitialDataLoadedAsync(),
+                DispatcherPriority.Background);
         }
         _passwordCapturePollTimer.Tick += async (_, _) => await PollPasswordCaptureQueuesAsync();
         _passwordCapturePollTimer.Start();

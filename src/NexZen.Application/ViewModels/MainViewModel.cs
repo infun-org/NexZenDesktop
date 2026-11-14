@@ -545,8 +545,15 @@ public partial class MainViewModel : ObservableObject
         SelectedSearchEngine = _settingsService.SearchEngine;
 
         Extensions.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasExtensions));
-        _ = LoadInitialDataAsync();
     }
+
+    private Task? _initialLoad;
+
+    /// <summary>
+    /// Reads bookmarks, downloads, history and saved passwords once. The main window starts it right
+    /// after it is shown: on the UI thread these reads took ~0.3–0.5 s and used to delay the window.
+    /// </summary>
+    public Task EnsureInitialDataLoadedAsync() => _initialLoad ??= LoadInitialDataAsync();
 
     private async Task LoadInitialDataAsync()
     {

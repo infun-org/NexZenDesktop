@@ -166,6 +166,12 @@ class Program
             };
             StartupTimer.Mark("CEF initialize");
             Xilium.CefGlue.Common.CefRuntimeLoader.Initialize(cefSettings, cefSettingsArgs.ToArray(), customSchemes);
+            // CefRuntime.Initialize (~1 s) and EF Core's first context (~0.4 s: internal services,
+            // model, query pipeline) run on background threads while Avalonia and the XAML load,
+            // instead of on the UI thread when the first tab / the view model needs them.
+            if (Environment.GetEnvironmentVariable("NEXZEN_CEF_SYNC_INIT") != "1")
+                Xilium.CefGlue.Common.CefRuntimeLoader.LoadInBackground();
+            NexZen.Infrastructure.Data.DatabaseWarmUp.Start();
             StartupLog.Write("CEF initialized, starting Avalonia");
             StartupTimer.Mark("Avalonia start");
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
