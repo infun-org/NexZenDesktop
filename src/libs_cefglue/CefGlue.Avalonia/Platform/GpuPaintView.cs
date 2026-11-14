@@ -183,19 +183,17 @@ namespace Xilium.CefGlue.Avalonia.Platform
                 if (Disabled)
                     return;
                 var start = s_trace ? System.Diagnostics.Stopwatch.GetTimestamp() : 0;
+                // Without a Skia GPU context this pass is not the window's compositor but, e.g., a
+                // RenderTargetBitmap snapshot (the back/forward slide): there is no texture to draw
+                // there, so skip it and keep the frame for the next real pass. Whether the window
+                // itself renders through EGL is checked at startup (GpuPaintPlatform.Verify).
                 var leaseFeature = context.TryGetFeature<ISkiaSharpApiLeaseFeature>();
                 if (leaseFeature == null)
-                {
-                    Disable("no Skia lease (software rendering?)");
                     return;
-                }
                 using var lease = leaseFeature.Lease();
                 var grContext = lease.GrContext;
                 if (grContext == null)
-                {
-                    Disable("Skia is not GPU accelerated");
                     return;
-                }
 
                 var frame = _owner.TakePending();
                 if (frame != null)
