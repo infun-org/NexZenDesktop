@@ -34,6 +34,18 @@ public sealed class PhoneMirrorClient : IDisposable
     private MirrorSessionCrypto? _session;
     private int _ended;
     private Timer? _timeout;
+    private Timer? _ackTimer;
+    private long _lastAckMs;
+    private long _lastReceivedSeq;
+    private long _lastAckedSeq;
+
+    private void SendAck()
+    {
+        var seq = Interlocked.Read(ref _lastReceivedSeq);
+        if (seq <= Interlocked.Exchange(ref _lastAckedSeq, seq) || State == PhoneMirrorState.Ended) return;
+        _lastAckMs = Environment.TickCount64;
+        _ = SendAsync(MirrorMessageTypes.Ack, new WireMirrorAck { SessionId = _sessionId, Seq = seq });
+    }
 
     public PhoneMirrorState State { get; private set; } = PhoneMirrorState.Requesting;
     public string? Sas => _session?.Sas;
@@ -43,6 +55,8 @@ public sealed class PhoneMirrorClient : IDisposable
     public event Action<MirrorStreamConfig>? ConfigReceived;
     /// <summary>One H.264 access unit (Annex-B), raised on the transport's thread.</summary>
     public event Action<byte[], bool>? VideoReceived;
+    /// <summary>Phone screen state: (screen on, locked).</summary>
+    public event Action<bool, bool>? PhoneStatusChanged;
 
     public PhoneMirrorClient(INexShareOrchestrator orchestrator, INexShareCrypto crypto)
     {
@@ -86,6 +100,17 @@ public sealed class PhoneMirrorClient : IDisposable
         return true;
     }
 
+    /// <summary>True once the phone said the owner allowed control (accessibility service on).</summary>
+    public bool CanControl { get; private set; }
+
+    /// <summary>Sends one input event, encrypted for this session. Ignored unless control is allowed.</summary>
+    public Task<bool> SendInputAsync(MirrorInputEvent input)
+    {
+        if (!CanControl || _session == null || State != PhoneMirrorState.Streaming) return Task.FromResult(false);
+        var wire = _session.SealInput(_sessionId, JsonSerializer.SerializeToUtf8Bytes(input));
+        return SendAsync(MirrorMessageTypes.Input, wire);
+    }
+
     public Task RequestKeyFrameAsync() =>
         State == PhoneMirrorState.Streaming
             ? SendAsync(MirrorMessageTypes.KeyFrame, new WireMirrorControl { SessionId = _sessionId })
@@ -118,6 +143,13 @@ public sealed class PhoneMirrorClient : IDisposable
                 case MirrorMessageTypes.Frame:
                     OnFrame(JsonSerializer.Deserialize<WireMirrorFrame>(env.Payload, Json));
                     break;
+                case MirrorMessageTypes.Status:
+                {
+                    var st = JsonSerializer.Deserialize<WireMirrorStatus>(env.Payload, Json);
+                    if (st?.SessionId == _sessionId)
+                        PhoneStatusChanged?.Invoke(st.Screen != "off", st.Locked);
+                    break;
+                }
                 case MirrorMessageTypes.Reject:
                 {
                     var c = JsonSerializer.Deserialize<WireMirrorControl>(env.Payload, Json);
@@ -168,6 +200,13 @@ public sealed class PhoneMirrorClient : IDisposable
             return;
         }
         var f = frame.Value;
+        // Tell the phone how far we got (it backs off when frames pile up somewhere on the way):
+        // at most every 100 ms, plus a trailing ack so the last frame before a pause is confirmed too.
+        Interlocked.Exchange(ref _lastReceivedSeq, f.Seq);
+        var now = Environment.TickCount64;
+        if (now - _lastAckMs >= 100) SendAck();
+        else _ackTimer ??= new Timer(_ => SendAck(), null, Timeout.Infinite, Timeout.Infinite);
+        _ackTimer?.Change(120, Timeout.Infinite);
         if (State == PhoneMirrorState.AwaitingApproval)
         {
             _timeout?.Change(Timeout.Infinite, Timeout.Infinite);
@@ -177,7 +216,10 @@ public sealed class PhoneMirrorClient : IDisposable
         {
             var config = JsonSerializer.Deserialize<MirrorStreamConfig>(Encoding.UTF8.GetString(f.Payload), Json);
             if (config != null && config.Width > 0 && config.Height > 0 && config.Width <= 8192 && config.Height <= 8192)
+            {
+                CanControl = config.Control;
                 ConfigReceived?.Invoke(config);
+            }
             return;
         }
         VideoReceived?.Invoke(f.Payload, (f.Flags & MirrorFrameFlags.KeyFrame) != 0);
@@ -196,6 +238,7 @@ public sealed class PhoneMirrorClient : IDisposable
     {
         if (Interlocked.Exchange(ref _ended, 1) != 0) return;
         _timeout?.Dispose();
+        _ackTimer?.Dispose();
         _orchestrator.OnMirrorMessage -= OnMirrorMessage;
         _orchestrator.OnPeerConnectionChanged -= OnPeerChanged;
         _myKey?.Dispose();

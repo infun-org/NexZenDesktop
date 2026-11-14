@@ -59,3 +59,24 @@ public class MirrorProtocolTests
         Assert.Equal("0e7b909e", System.Convert.ToHexString(key)[..8].ToLowerInvariant());
     }
 }
+
+public class MirrorInputTests
+{
+    [Fact]
+    public void Input_is_sealed_for_the_phone_and_cannot_be_replayed_or_passed_off_as_a_frame()
+    {
+        var crypto = new NexShareCrypto();
+        var (pcKey, pcPub) = crypto.GenerateKeyPair();
+        var (phoneKey, phonePub) = crypto.GenerateKeyPair();
+        var n1 = RandomNumberGenerator.GetBytes(16);
+        var n2 = RandomNumberGenerator.GetBytes(16);
+        var pc = MirrorSessionCrypto.Derive(crypto, pcKey, pcPub, n1, phonePub, n2, "s");
+        var phone = MirrorSessionCrypto.Derive(crypto, phoneKey, phonePub, n2, pcPub, n1, "s");
+
+        var wire = pc.SealInput("s", Encoding.UTF8.GetBytes("{\"t\":\"key\",\"k\":\"home\"}"));
+        long last = 0;
+        Assert.Equal("{\"t\":\"key\",\"k\":\"home\"}", Encoding.UTF8.GetString(phone.OpenInput(wire, ref last)!));
+        Assert.Null(phone.OpenInput(wire, ref last)); // replay
+        Assert.Null(phone.Open(wire));                // not valid as a video frame (different tag)
+    }
+}

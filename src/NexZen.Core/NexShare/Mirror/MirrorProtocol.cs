@@ -21,7 +21,8 @@ namespace NexZen.Core.NexShare.Mirror;
 ///    phone → PC  mirror_reject  {s, reason}                    (if declined)
 /// 4. phone → PC  mirror_frame   {s, n, ct} …                   (encrypted, see <see cref="MirrorFrame"/>)
 /// 5. PC → phone  mirror_keyframe {s}                          (decoder needs a sync frame)
-/// 6. either      mirror_stop    {s, reason}
+/// 6. PC → phone  mirror_input   {s, n, ct}                    (phase 2; only when the config says control)
+/// 7. either      mirror_stop    {s, reason}
 /// </summary>
 public static class MirrorMessageTypes
 {
@@ -30,6 +31,11 @@ public static class MirrorMessageTypes
     public const string Reject = "mirror_reject";
     public const string Frame = "mirror_frame";
     public const string KeyFrame = "mirror_keyframe";
+    public const string Input = "mirror_input";
+    /// <summary>PC → phone, ~10 per second: last frame received, so the phone knows what is still in flight.</summary>
+    public const string Ack = "mirror_ack";
+    /// <summary>Phone → PC: the screen went off/on or is locked (the picture stops while it is off).</summary>
+    public const string Status = "mirror_status";
     public const string Stop = "mirror_stop";
 
     public static bool IsMirror(string? type) => type != null && type.StartsWith("mirror_", StringComparison.Ordinal);
@@ -57,6 +63,19 @@ public sealed class WireMirrorControl
     [JsonPropertyName("reason")] public string? Reason { get; set; }
 }
 
+public sealed class WireMirrorStatus
+{
+    [JsonPropertyName("s")] public string SessionId { get; set; } = string.Empty;
+    [JsonPropertyName("screen")] public string Screen { get; set; } = "on";
+    [JsonPropertyName("locked")] public bool Locked { get; set; }
+}
+
+public sealed class WireMirrorAck
+{
+    [JsonPropertyName("s")] public string SessionId { get; set; } = string.Empty;
+    [JsonPropertyName("seq")] public long Seq { get; set; }
+}
+
 public sealed class WireMirrorFrame
 {
     [JsonPropertyName("s")] public string SessionId { get; set; } = string.Empty;
@@ -80,6 +99,24 @@ public sealed class MirrorStreamConfig
     [JsonPropertyName("codec")] public string Codec { get; set; } = "h264";
     [JsonPropertyName("width")] public int Width { get; set; }
     [JsonPropertyName("height")] public int Height { get; set; }
+    /// <summary>The owner allowed control and NexZen's accessibility service is on: the PC may send input.</summary>
+    [JsonPropertyName("control")] public bool Control { get; set; }
+}
+
+/// <summary>
+/// One input event (plaintext of mirror_input after the 8-byte sequence number). Coordinates are
+/// fractions (0..1) of the picture, so they do not depend on the video size.
+/// t: down/move/up (x, y) · scroll (x, y, dy: + = content moves up) · key (k: back, home, recents,
+/// enter, backspace, delete) · text (v).
+/// </summary>
+public sealed class MirrorInputEvent
+{
+    [JsonPropertyName("t")] public string Type { get; set; } = string.Empty;
+    [JsonPropertyName("x")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public double? X { get; set; }
+    [JsonPropertyName("y")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public double? Y { get; set; }
+    [JsonPropertyName("dy")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public double? Dy { get; set; }
+    [JsonPropertyName("k")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Key { get; set; }
+    [JsonPropertyName("v")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Text { get; set; }
 }
 
 /// <summary>Decrypted frame: plaintext layout = seq (8 bytes BE) | flags (1 byte) | payload.</summary>
@@ -141,6 +178,32 @@ public sealed class MirrorSessionCrypto
         if (seq <= _lastSeq) return null;
         _lastSeq = seq;
         return new MirrorFrame(seq, (MirrorFrameFlags)plain[8], plain.AsSpan(9).ToArray());
+    }
+
+    private long _inputSeq;
+
+    /// <summary>
+    /// PC → phone input: plaintext = seq (8 BE) | UTF-8 JSON <see cref="MirrorInputEvent"/>, under the
+    /// tag + ":in" so frames and input can never be swapped or reflected.
+    /// </summary>
+    public WireMirrorFrame SealInput(string sessionId, ReadOnlySpan<byte> json)
+    {
+        var plain = new byte[8 + json.Length];
+        BinaryPrimitives.WriteInt64BigEndian(plain, System.Threading.Interlocked.Increment(ref _inputSeq));
+        json.CopyTo(plain.AsSpan(8));
+        var (n, ct) = _crypto.Encrypt(plain, _key, Tag + ":in");
+        return new WireMirrorFrame { SessionId = sessionId, NonceB64 = Convert.ToBase64String(n), CipherB64 = Convert.ToBase64String(ct) };
+    }
+
+    /// <summary>Phone side of <see cref="SealInput"/> (tests).</summary>
+    public byte[]? OpenInput(WireMirrorFrame wire, ref long lastSeq)
+    {
+        var plain = _crypto.TryDecrypt(Convert.FromBase64String(wire.NonceB64), Convert.FromBase64String(wire.CipherB64), _key, Tag + ":in");
+        if (plain == null || plain.Length < 8) return null;
+        var seq = BinaryPrimitives.ReadInt64BigEndian(plain);
+        if (seq <= lastSeq) return null;
+        lastSeq = seq;
+        return plain.AsSpan(8).ToArray();
     }
 
     /// <summary>Phone side (used by tests to produce frames the way NexShareMirror.kt does).</summary>
