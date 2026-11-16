@@ -150,7 +150,22 @@ internal sealed unsafe class LibAvH264Decoder : IDisposable
         _sws = IntPtr.Zero;
     }
 
-    private sealed class Api
+    /// <summary>Loads FFmpeg's libraries once (shared with <see cref="LibAvAudioDecoder"/>).</summary>
+    internal static Api? LoadApi(out string? error)
+    {
+        lock (LoadLock)
+        {
+            if (s_api == null && s_loadError == null)
+            {
+                try { s_api = Api.Load(); }
+                catch (Exception ex) { s_loadError = ex.Message; }
+            }
+        }
+        error = s_loadError;
+        return s_api;
+    }
+
+    internal sealed class Api
     {
         public delegate* unmanaged<int, IntPtr> avcodec_find_decoder;
         public delegate* unmanaged<IntPtr, IntPtr> avcodec_alloc_context3;

@@ -80,3 +80,24 @@ public class MirrorInputTests
         Assert.Null(phone.Open(wire));                // not valid as a video frame (different tag)
     }
 }
+
+public class MirrorAudioTests
+{
+    [Fact]
+    public void Audio_has_its_own_sequence_and_tag()
+    {
+        var crypto = new NexShareCrypto();
+        var (a, ap) = crypto.GenerateKeyPair();
+        var (b, bp) = crypto.GenerateKeyPair();
+        var n1 = RandomNumberGenerator.GetBytes(16);
+        var n2 = RandomNumberGenerator.GetBytes(16);
+        var pc = MirrorSessionCrypto.Derive(crypto, a, ap, n1, bp, n2, "s");
+        var phone = MirrorSessionCrypto.Derive(crypto, b, bp, n2, ap, n1, "s");
+
+        Assert.NotNull(pc.Open(phone.Seal("s", 5, MirrorFrameFlags.None, new byte[3]))); // video seq 5
+        var audio = phone.SealAudio("s", 1, 0, new byte[] { 9, 9 });
+        Assert.Equal(new byte[] { 9, 9 }, pc.OpenAudio(audio)!.Value.Payload);        // audio seq 1 still fine
+        Assert.Null(pc.OpenAudio(audio));                                             // replay
+        Assert.Null(pc.Open(phone.SealAudio("s", 9, 0, new byte[1])));                // not a video frame
+    }
+}

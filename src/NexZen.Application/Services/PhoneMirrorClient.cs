@@ -55,6 +55,10 @@ public sealed class PhoneMirrorClient : IDisposable
     public event Action<MirrorStreamConfig>? ConfigReceived;
     /// <summary>One H.264 access unit (Annex-B), raised on the transport's thread.</summary>
     public event Action<byte[], bool>? VideoReceived;
+    /// <summary>Audio stream format (raised before the first packet and if it changes).</summary>
+    public event Action<MirrorAudioConfig>? AudioConfigReceived;
+    /// <summary>One encoded audio packet, raised on the transport's thread.</summary>
+    public event Action<byte[]>? AudioReceived;
     /// <summary>Phone screen state: (screen on, locked).</summary>
     public event Action<bool, bool>? PhoneStatusChanged;
 
@@ -143,6 +147,23 @@ public sealed class PhoneMirrorClient : IDisposable
                 case MirrorMessageTypes.Frame:
                     OnFrame(JsonSerializer.Deserialize<WireMirrorFrame>(env.Payload, Json));
                     break;
+                case MirrorMessageTypes.Audio:
+                {
+                    var wire = JsonSerializer.Deserialize<WireMirrorFrame>(env.Payload, Json);
+                    if (wire?.SessionId != _sessionId || _session == null) break;
+                    if (_session.OpenAudio(wire) is not { } packet) break;
+                    if (packet.Kind == 1)
+                    {
+                        var cfg = JsonSerializer.Deserialize<MirrorAudioConfig>(Encoding.UTF8.GetString(packet.Payload), Json);
+                        if (cfg is { Rate: > 0 and <= 192000, Channels: >= 1 and <= 2 })
+                            AudioConfigReceived?.Invoke(cfg);
+                    }
+                    else
+                    {
+                        AudioReceived?.Invoke(packet.Payload);
+                    }
+                    break;
+                }
                 case MirrorMessageTypes.Status:
                 {
                     var st = JsonSerializer.Deserialize<WireMirrorStatus>(env.Payload, Json);

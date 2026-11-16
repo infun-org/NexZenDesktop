@@ -41,6 +41,11 @@ public sealed class MirrorWindow : Window
     private int _uiQueued;
     private bool _needKeyFrame = true;
     private readonly Border _toolbar;
+    private readonly StackPanel _controlButtons;
+    private readonly object _audioLock = new();
+    private LibAvAudioDecoder? _audioDecoder;
+    private PulseAudioPlayer? _audioPlayer;
+    private bool _audioMuted;
     private readonly Border _banner;
     private readonly TextBlock _bannerText = new() { Foreground = Brushes.White, FontSize = 13, TextWrapping = TextWrapping.Wrap };
     private bool _dimmed;
@@ -93,6 +98,12 @@ public sealed class MirrorWindow : Window
             b.Click += (_, _) => SendKey(key);
             return b;
         }
+        _controlButtons = new StackPanel
+        {
+            Orientation = Orientation.Horizontal, Spacing = 24,
+            Children = { NavButton("◀", "Back (right click, Esc)", "back"), NavButton("●", "Home (middle click)", "home"),
+                         NavButton("■", "Recent apps", "recents"), DimButton(), PhoneSpeakerButton() },
+        };
         _toolbar = new Border
         {
             Background = new SolidColorBrush(Color.Parse("#202020")),
@@ -100,8 +111,7 @@ public sealed class MirrorWindow : Window
             Child = new StackPanel
             {
                 Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Spacing = 24,
-                Children = { NavButton("◀", "Back (right click, Esc)", "back"), NavButton("●", "Home (middle click)", "home"),
-                             NavButton("■", "Recent apps", "recents"), DimButton() },
+                Children = { _controlButtons, MuteButton() },
             },
         };
         _banner = new Border
@@ -144,6 +154,8 @@ public sealed class MirrorWindow : Window
         _client.StateChanged += (state, message) => Dispatcher.UIThread.Post(() => OnState(state, message));
         _client.ConfigReceived += config => Dispatcher.UIThread.Post(() => OnConfig(config));
         _client.VideoReceived += OnVideo;
+        _client.AudioConfigReceived += OnAudioConfig;
+        _client.AudioReceived += OnAudio;
         _client.PhoneStatusChanged += (screenOn, locked) => Dispatcher.UIThread.Post(() =>
         {
             _bannerText.Text = !screenOn
@@ -175,6 +187,13 @@ public sealed class MirrorWindow : Window
             _decoder?.Dispose();
             _decoder = null;
         }
+        lock (_audioLock)
+        {
+            _audioPlayer?.Dispose();
+            _audioPlayer = null;
+            _audioDecoder?.Dispose();
+            _audioDecoder = null;
+        }
     }
 
     private void OnState(PhoneMirrorState state, string message)
@@ -193,7 +212,8 @@ public sealed class MirrorWindow : Window
     private void OnConfig(MirrorStreamConfig config)
     {
         if (config.Codec != "h264") return;
-        _toolbar.IsVisible = _client.CanControl;
+        _toolbar.IsVisible = true;
+        _controlButtons.IsVisible = _client.CanControl;
         FocusTyping();
         _status.Text = _client.CanControl ? "" : _status.Text;
         _needKeyFrame = true;
@@ -260,6 +280,71 @@ public sealed class MirrorWindow : Window
             }
         }
         _image.InvalidateVisual();
+    }
+
+    // ---- audio (phase 3) ------------------------------------------------------------------------
+
+    private void OnAudioConfig(MirrorAudioConfig config)
+    {
+        lock (_audioLock)
+        {
+            _audioPlayer?.Dispose();
+            _audioDecoder?.Dispose();
+            _audioDecoder = LibAvAudioDecoder.TryCreate(new MirrorAudio(config.Codec, config.Rate, config.Channels), out var err);
+            _audioPlayer = _audioDecoder == null ? null : PulseAudioPlayer.TryCreate(config.Rate, config.Channels, out err);
+            if (_audioPlayer != null) _audioPlayer.Muted = _audioMuted;
+            else Console.WriteLine("[Mirror] no phone audio: " + err);
+        }
+    }
+
+    /// <summary>Transport thread: decode and queue for playback.</summary>
+    private void OnAudio(byte[] packet)
+    {
+        lock (_audioLock)
+        {
+            var player = _audioPlayer;
+            if (player == null) return;
+            _audioDecoder?.Decode(packet, player.Enqueue);
+        }
+    }
+
+    private Button MuteButton()
+    {
+        var b = new Button
+        {
+            Content = "🔊", FontSize = 16, Width = 56, Height = 34, Focusable = false, Background = Brushes.Transparent,
+            Foreground = Brushes.White, HorizontalContentAlignment = HorizontalAlignment.Center,
+        };
+        ToolTip.SetTip(b, "Mute the phone's sound on this computer");
+        b.Click += (_, _) =>
+        {
+            _audioMuted = !_audioMuted;
+            lock (_audioLock)
+                if (_audioPlayer != null) _audioPlayer.Muted = _audioMuted;
+            b.Content = _audioMuted ? "🔇" : "🔊";
+            ToolTip.SetTip(b, _audioMuted ? "Play the phone's sound on this computer" : "Mute the phone's sound on this computer");
+        };
+        return b;
+    }
+
+    /// <summary>The phone stays silent while its sound plays here; this lets it play on the phone too.</summary>
+    private Button PhoneSpeakerButton()
+    {
+        var on = false;
+        var b = new Button
+        {
+            Content = "📵", FontSize = 16, Width = 56, Height = 34, Focusable = false, Background = Brushes.Transparent,
+            Foreground = Brushes.White, HorizontalContentAlignment = HorizontalAlignment.Center,
+        };
+        ToolTip.SetTip(b, "Also play the sound on the phone");
+        b.Click += (_, _) =>
+        {
+            on = !on;
+            SendKey(on ? "phone_speaker_on" : "phone_speaker_off");
+            b.Content = on ? "📱" : "📵";
+            ToolTip.SetTip(b, on ? "Silence the phone (sound plays only here)" : "Also play the sound on the phone");
+        };
+        return b;
     }
 
     private Button DimButton()

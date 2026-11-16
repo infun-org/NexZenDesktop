@@ -36,6 +36,8 @@ public static class MirrorMessageTypes
     public const string Ack = "mirror_ack";
     /// <summary>Phone → PC: the screen went off/on or is locked (the picture stops while it is off).</summary>
     public const string Status = "mirror_status";
+    /// <summary>Phone → PC: audio packets {s, n, ct}; plaintext = seq | kind (0 data, 1 config JSON) | payload.</summary>
+    public const string Audio = "mirror_audio";
     public const string Stop = "mirror_stop";
 
     public static bool IsMirror(string? type) => type != null && type.StartsWith("mirror_", StringComparison.Ordinal);
@@ -61,6 +63,14 @@ public sealed class WireMirrorControl
 {
     [JsonPropertyName("s")] public string SessionId { get; set; } = string.Empty;
     [JsonPropertyName("reason")] public string? Reason { get; set; }
+}
+
+/// <summary>Audio config (kind 1): codec "opus" (raw packets) or "aac" (ADTS), 48 kHz stereo.</summary>
+public sealed class MirrorAudioConfig
+{
+    [JsonPropertyName("codec")] public string Codec { get; set; } = "opus";
+    [JsonPropertyName("rate")] public int Rate { get; set; } = 48000;
+    [JsonPropertyName("channels")] public int Channels { get; set; } = 2;
 }
 
 public sealed class WireMirrorStatus
@@ -204,6 +214,37 @@ public sealed class MirrorSessionCrypto
         if (seq <= lastSeq) return null;
         lastSeq = seq;
         return plain.AsSpan(8).ToArray();
+    }
+
+    private long _lastAudioSeq;
+
+    /// <summary>Decrypts an audio packet (tag + ":a", own sequence). Null if forged, corrupt or replayed.</summary>
+    public (byte Kind, byte[] Payload)? OpenAudio(WireMirrorFrame wire)
+    {
+        byte[] nonce, ct;
+        try
+        {
+            nonce = Convert.FromBase64String(wire.NonceB64);
+            ct = Convert.FromBase64String(wire.CipherB64);
+        }
+        catch (FormatException) { return null; }
+        var plain = _crypto.TryDecrypt(nonce, ct, _key, Tag + ":a");
+        if (plain == null || plain.Length < 9) return null;
+        var seq = BinaryPrimitives.ReadInt64BigEndian(plain);
+        if (seq <= _lastAudioSeq) return null;
+        _lastAudioSeq = seq;
+        return (plain[8], plain.AsSpan(9).ToArray());
+    }
+
+    /// <summary>Phone side of <see cref="OpenAudio"/> (tests).</summary>
+    public WireMirrorFrame SealAudio(string sessionId, long seq, byte kind, ReadOnlySpan<byte> payload)
+    {
+        var plain = new byte[9 + payload.Length];
+        BinaryPrimitives.WriteInt64BigEndian(plain, seq);
+        plain[8] = kind;
+        payload.CopyTo(plain.AsSpan(9));
+        var (n, ct) = _crypto.Encrypt(plain, _key, Tag + ":a");
+        return new WireMirrorFrame { SessionId = sessionId, NonceB64 = Convert.ToBase64String(n), CipherB64 = Convert.ToBase64String(ct) };
     }
 
     /// <summary>Phone side (used by tests to produce frames the way NexShareMirror.kt does).</summary>
