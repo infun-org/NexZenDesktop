@@ -117,7 +117,10 @@ class Program
 
             var cefSettingsArgs = new List<KeyValuePair<string, string>>
             {
-                new KeyValuePair<string, string>("disable-features", "UserAgentClientHint,CompressionDictionaryTransport,CompressionDictionaryTransportBacking,AudioServiceOutOfProcess"),
+                // User-Agent Client Hints stay on: CEF 152 is Chromium 152, and a browser that sends no
+                // Sec-CH-UA / navigator.userAgentData (or a UA claiming an older Chrome) looks like a bot
+                // to Cloudflare's "Verify you are human" check.
+                new KeyValuePair<string, string>("disable-features", "CompressionDictionaryTransport,CompressionDictionaryTransportBacking,AudioServiceOutOfProcess"),
                 new KeyValuePair<string, string>("autoplay-policy", "no-user-gesture-required"),
             };
 
@@ -133,9 +136,9 @@ class Program
                 WindowlessRenderingEnabled = true,
                 LogSeverity = CefLogSeverity.Info,
                 LogFile = logFile,
-                UserAgent = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-                    ? "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
-                    : "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+                // No UserAgent override: CEF's own UA names the real Chromium version (152), matching
+                // the engine's features and the client hints. The old fixed "Chrome/128" string no
+                // longer matched and made bot checks (Cloudflare Turnstile) fail.
             };
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {

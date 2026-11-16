@@ -50,6 +50,12 @@ public interface INexShareOrchestrator : IDisposable
     /// <summary>Device id of the peer on the current connection (after its HELLO), or null.</summary>
     string? ConnectedDeviceId { get; }
 
+    /// <summary>
+    /// Connects to a phone's NexShare server through a local TCP tunnel (adb forward over USB),
+    /// replacing the current connection. True once connected; the peer id follows with its HELLO.
+    /// </summary>
+    Task<bool> ConnectOverTunnelAsync(int localPort, string label);
+
     /// <summary>Sends an envelope on the current connection (SenderId is filled in). False when not connected.</summary>
     Task<bool> SendEnvelopeAsync(WireEnvelope envelope);
 }

@@ -38,6 +38,8 @@ public static class MirrorMessageTypes
     public const string Status = "mirror_status";
     /// <summary>Phone → PC: audio packets {s, n, ct}; plaintext = seq | kind (0 data, 1 config JSON) | payload.</summary>
     public const string Audio = "mirror_audio";
+    /// <summary>PC → phone: {s, mode: "fast" | "smooth" | "sharp"} — picture size (1000/1600/1920) and bitrate range.</summary>
+    public const string Quality = "mirror_quality";
     public const string Stop = "mirror_stop";
 
     public static bool IsMirror(string? type) => type != null && type.StartsWith("mirror_", StringComparison.Ordinal);
@@ -78,6 +80,12 @@ public sealed class WireMirrorStatus
     [JsonPropertyName("s")] public string SessionId { get; set; } = string.Empty;
     [JsonPropertyName("screen")] public string Screen { get; set; } = "on";
     [JsonPropertyName("locked")] public bool Locked { get; set; }
+}
+
+public sealed class WireMirrorQuality
+{
+    [JsonPropertyName("s")] public string SessionId { get; set; } = string.Empty;
+    [JsonPropertyName("mode")] public string Mode { get; set; } = "smooth";
 }
 
 public sealed class WireMirrorAck

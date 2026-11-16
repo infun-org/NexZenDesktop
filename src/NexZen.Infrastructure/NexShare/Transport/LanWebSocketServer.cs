@@ -254,7 +254,7 @@ public class LanWebSocketClientTransport : INexShareTransport
                     var envelope = JsonSerializer.Deserialize<WireEnvelope>(json, _jsonOptions);
                     if (envelope != null)
                     {
-                        if (envelope.Type != "mirror_frame")
+                        if (envelope.Type is not ("mirror_frame" or "mirror_audio"))
                             Console.WriteLine($"[WS-RECV #{n}] type={envelope.Type} bytes={json.Length} msgId={envelope.MessageId}");
                         OnMessageReceived?.Invoke(this, envelope);
                     }

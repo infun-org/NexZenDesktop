@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -63,8 +64,16 @@ public sealed class MirrorWindow : Window
     private long _lastMoveTicks;
     private bool _sized;
 
+    private readonly INexShareOrchestrator _orchestrator;
+    private readonly TextBlock _routeLabel = new()
+    {
+        Foreground = new SolidColorBrush(Color.Parse("#9AA0A6")), FontSize = 12, VerticalAlignment = VerticalAlignment.Center,
+        Margin = new Thickness(8, 0, 0, 0),
+    };
+
     public MirrorWindow(INexShareOrchestrator orchestrator, INexShareCrypto crypto)
     {
+        _orchestrator = orchestrator;
         Title = "NexZen Mirror";
         Width = 420;
         Height = 860;
@@ -90,7 +99,7 @@ public sealed class MirrorWindow : Window
         {
             var b = new Button
             {
-                Content = glyph, FontSize = 16, Width = 56, Height = 34, Focusable = false,
+                Content = glyph, FontSize = 16, Width = 44, Height = 34, Focusable = false,
                 HorizontalContentAlignment = HorizontalAlignment.Center, Background = Brushes.Transparent,
                 Foreground = Brushes.White,
             };
@@ -100,7 +109,7 @@ public sealed class MirrorWindow : Window
         }
         _controlButtons = new StackPanel
         {
-            Orientation = Orientation.Horizontal, Spacing = 24,
+            Orientation = Orientation.Horizontal, Spacing = 4,
             Children = { NavButton("◀", "Back (right click, Esc)", "back"), NavButton("●", "Home (middle click)", "home"),
                          NavButton("■", "Recent apps", "recents"), DimButton(), PhoneSpeakerButton() },
         };
@@ -110,8 +119,8 @@ public sealed class MirrorWindow : Window
             IsVisible = false,
             Child = new StackPanel
             {
-                Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Spacing = 24,
-                Children = { _controlButtons, MuteButton() },
+                Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Spacing = 4,
+                Children = { _controlButtons, MuteButton(), QualityButton() },
             },
         };
         _banner = new Border
@@ -174,7 +183,37 @@ public sealed class MirrorWindow : Window
             OnState(PhoneMirrorState.Ended, "FFmpeg was not found (" + _decoderError + "). Install ffmpeg to show the phone screen.");
             return;
         }
+        _route = await ChooseRouteAsync();
+        _routeLabel.Text = _route;
+        UpdateTitle();
         await _client.StartAsync(Environment.MachineName);
+    }
+
+    /// <summary>
+    /// USB first: with a phone attached over USB debugging, NexShare reconnects through an adb tunnel
+    /// (much more bandwidth, less delay; the phone raises the quality for it). Otherwise the current
+    /// LAN / Wi-Fi Direct connection is used.
+    /// </summary>
+    private async Task<string> ChooseRouteAsync()
+    {
+        _status.Text = "Looking for a phone on USB...";
+        var tunnel = await System.Threading.Tasks.Task.Run(AdbTunnel.OpenAsync);
+        if (tunnel == null)
+        {
+            Program.StartupLog.Write("[Mirror] no USB phone (adb=" + (AdbTunnel.FindAdb() ?? "not found") + "): using Wi-Fi");
+            return "Wi-Fi";
+        }
+        _status.Text = "Connecting over USB...";
+        if (!await _orchestrator.ConnectOverTunnelAsync(tunnel.Value.LocalPort, "USB"))
+        {
+            Program.StartupLog.Write($"[Mirror] USB tunnel localhost:{tunnel.Value.LocalPort} did not connect: using Wi-Fi");
+            return "Wi-Fi";
+        }
+        // The phone's id arrives with its HELLO.
+        for (var i = 0; i < 40 && string.IsNullOrEmpty(_orchestrator.ConnectedDeviceId); i++)
+            await Task.Delay(100);
+        Program.StartupLog.Write($"[Mirror] USB tunnel {tunnel.Value.Serial} -> localhost:{tunnel.Value.LocalPort}, peer={_orchestrator.ConnectedDeviceId}");
+        return "USB";
     }
 
     protected override void OnClosed(EventArgs e)
@@ -213,6 +252,11 @@ public sealed class MirrorWindow : Window
     {
         if (config.Codec != "h264") return;
         _toolbar.IsVisible = true;
+        if (s_mode != "smooth" && !_qualitySent)
+        {
+            _qualitySent = true;
+            _ = _client.SetQualityAsync(s_mode);
+        }
         _controlButtons.IsVisible = _client.CanControl;
         FocusTyping();
         _status.Text = _client.CanControl ? "" : _status.Text;
@@ -222,8 +266,29 @@ public sealed class MirrorWindow : Window
     }
 
     /// <summary>Transport thread: decode right away (starting at a key frame) and hand the picture to the UI.</summary>
+    // Per-5-second statistics in startup.log: frames received / decoded / shown, decode time.
+    private int _statRecv, _statDecoded, _statShown;
+    private double _statDecodeMs;
+    private long _statSince = Environment.TickCount64;
+
+    private void Stats()
+    {
+        var now = Environment.TickCount64;
+        var span = now - Interlocked.Read(ref _statSince);
+        if (span < 5000) return;
+        Interlocked.Exchange(ref _statSince, now);
+        var recv = Interlocked.Exchange(ref _statRecv, 0);
+        var dec = Interlocked.Exchange(ref _statDecoded, 0);
+        var shown = Interlocked.Exchange(ref _statShown, 0);
+        Program.StartupLog.Write($"[Mirror] {Title}: recv {recv * 1000.0 / span:0.0} fps, decoded {dec * 1000.0 / span:0.0} fps, " +
+            $"shown {shown * 1000.0 / span:0.0} fps, decode {(_statDecodeMs / Math.Max(1, dec)):0.0} ms, size {_frameW}x{_frameH}");
+        _statDecodeMs = 0;
+    }
+
     private void OnVideo(byte[] accessUnit, bool keyFrame)
     {
+        Interlocked.Increment(ref _statRecv);
+        Stats();
         lock (_decodeLock)
         {
             var decoder = _decoder;
@@ -233,7 +298,10 @@ public sealed class MirrorWindow : Window
                 if (!keyFrame) return;
                 _needKeyFrame = false;
             }
-            if (!decoder.Decode(accessUnit, OnDecoded))
+            var t0 = System.Diagnostics.Stopwatch.GetTimestamp();
+            var ok = decoder.Decode(accessUnit, _sink ??= new BitmapSink(this));
+            _statDecodeMs += System.Diagnostics.Stopwatch.GetElapsedTime(t0).TotalMilliseconds;
+            if (!ok)
             {
                 _needKeyFrame = true; // resynchronise on the next key frame
                 _ = _client.RequestKeyFrameAsync();
@@ -241,45 +309,74 @@ public sealed class MirrorWindow : Window
         }
     }
 
-    /// <summary>Keep only the newest picture and let the UI thread copy it.</summary>
-    private void OnDecoded(byte[] frame, int width, int height)
+    // Triple buffering: the decoder converts straight into a WriteableBitmap that is neither shown
+    // nor waiting to be shown, then hands it to the UI thread, which only swaps Image.Source.
+    // (Copying each ~10 MB picture twice on the UI thread limited the display to ~7–17 fps.)
+    private sealed class BitmapSink : LibAvH264Decoder.IFrameSink
     {
-        lock (_frameLock)
+        private readonly MirrorWindow _w;
+        private Avalonia.Platform.ILockedFramebuffer? _locked;
+        private int _writing = -1;
+        public BitmapSink(MirrorWindow w) => _w = w;
+
+        public bool Begin(int width, int height, out IntPtr destination, out int stride)
         {
-            if (_pendingFrame == null || _pendingFrame.Length != frame.Length)
-                _pendingFrame = new byte[frame.Length];
-            Buffer.BlockCopy(frame, 0, _pendingFrame, 0, frame.Length);
-            _frameW = width;
-            _frameH = height;
+            destination = IntPtr.Zero;
+            stride = 0;
+            lock (_w._swapLock)
+            {
+                if (_w._buffers[0] == null || _w._buffers[0]!.PixelSize.Width != width || _w._buffers[0]!.PixelSize.Height != height)
+                {
+                    for (var k = 0; k < 3; k++)
+                        _w._buffers[k] = new WriteableBitmap(new PixelSize(width, height), new Vector(96, 96),
+                            PixelFormat.Bgra8888, AlphaFormat.Opaque);
+                    _w._front = -1;
+                    _w._pending = -1;
+                }
+                _writing = 0;
+                while (_writing == _w._front || _writing == _w._pending) _writing++;
+            }
+            _locked = _w._buffers[_writing]!.Lock();
+            destination = _locked.Address;
+            stride = _locked.RowBytes;
+            return true;
         }
-        if (Interlocked.Exchange(ref _uiQueued, 1) == 0)
-            Dispatcher.UIThread.Post(ShowFrame, DispatcherPriority.Render);
+
+        public void End(int width, int height)
+        {
+            _locked?.Dispose();
+            _locked = null;
+            lock (_w._swapLock)
+                _w._pending = _writing;
+            _w._frameW = width;
+            _w._frameH = height;
+            Interlocked.Increment(ref _w._statDecoded);
+            if (Interlocked.Exchange(ref _w._uiQueued, 1) == 0)
+                Dispatcher.UIThread.Post(_w.ShowFrame, DispatcherPriority.Render);
+        }
     }
+
+    private readonly object _swapLock = new();
+    private readonly WriteableBitmap?[] _buffers = new WriteableBitmap?[3];
+    private int _front = -1, _pending = -1;
+    private BitmapSink? _sink;
 
     private void ShowFrame()
     {
         Interlocked.Exchange(ref _uiQueued, 0);
-        lock (_frameLock)
+        WriteableBitmap? next;
+        lock (_swapLock)
         {
-            if (_pendingFrame == null || _frameW <= 0) return;
-            if (_bitmap == null || _bitmap.PixelSize.Width != _frameW || _bitmap.PixelSize.Height != _frameH)
-            {
-                _bitmap = new WriteableBitmap(new PixelSize(_frameW, _frameH), new Vector(96, 96),
-                    PixelFormat.Bgra8888, AlphaFormat.Opaque);
-                _image.Source = _bitmap;
-            }
-            using var fb = _bitmap.Lock();
-            if (fb.RowBytes == _frameW * 4)
-            {
-                Marshal.Copy(_pendingFrame, 0, fb.Address, _pendingFrame.Length);
-            }
-            else
-            {
-                for (var y = 0; y < _frameH; y++)
-                    Marshal.Copy(_pendingFrame, y * _frameW * 4, fb.Address + y * fb.RowBytes, _frameW * 4);
-            }
+            if (_pending < 0) return;
+            _front = _pending;
+            _pending = -1;
+            next = _buffers[_front];
         }
+        if (next == null) return;
+        _bitmap = next;
+        if (!ReferenceEquals(_image.Source, next)) _image.Source = next;
         _image.InvalidateVisual();
+        Interlocked.Increment(ref _statShown);
     }
 
     // ---- audio (phase 3) ------------------------------------------------------------------------
@@ -308,11 +405,49 @@ public sealed class MirrorWindow : Window
         }
     }
 
+    private string _route = "";
+    private bool _qualitySent;
+    // Quality, remembered for the next mirroring session while NexZen runs.
+    private static readonly string[] Modes = { "fast", "smooth", "sharp" };
+    private static string s_mode = "smooth";
+
+    private static string Label(string mode) => mode switch { "fast" => "FAST", "sharp" => "HD", _ => "SD" };
+    private static string Name(string mode) => mode switch { "fast" => "Fast", "sharp" => "Sharp", _ => "Smooth" };
+
+    /// <summary>The bottom bar is often too narrow for labels; the title shows route and quality.</summary>
+    private void UpdateTitle() => Title = $"NexZen Mirror · {_route} · {Name(s_mode)}";
+
+    private Button QualityButton()
+    {
+        var b = new Button
+        {
+            Content = Label(s_mode), FontSize = 12, FontWeight = FontWeight.Bold, Width = 50, Height = 34, Padding = new Thickness(0),
+            Focusable = false, Background = Brushes.Transparent, Foreground = Brushes.White,
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+        };
+        void Tip() => ToolTip.SetTip(b, s_mode switch
+        {
+            "fast" => "Fast: 1000 px, highest frame rate. Click for Smooth.",
+            "sharp" => "Sharp: 1920 px, more bitrate. Click for Fast.",
+            _ => "Smooth: 1600 px. Click for Sharp.",
+        });
+        Tip();
+        b.Click += async (_, _) =>
+        {
+            s_mode = Modes[(Array.IndexOf(Modes, s_mode) + 1) % Modes.Length];
+            b.Content = Label(s_mode);
+            Tip();
+            UpdateTitle();
+            await _client.SetQualityAsync(s_mode);
+        };
+        return b;
+    }
+
     private Button MuteButton()
     {
         var b = new Button
         {
-            Content = "🔊", FontSize = 16, Width = 56, Height = 34, Focusable = false, Background = Brushes.Transparent,
+            Content = "🔊", FontSize = 16, Width = 44, Height = 34, Focusable = false, Background = Brushes.Transparent,
             Foreground = Brushes.White, HorizontalContentAlignment = HorizontalAlignment.Center,
         };
         ToolTip.SetTip(b, "Mute the phone's sound on this computer");
@@ -333,7 +468,7 @@ public sealed class MirrorWindow : Window
         var on = false;
         var b = new Button
         {
-            Content = "📵", FontSize = 16, Width = 56, Height = 34, Focusable = false, Background = Brushes.Transparent,
+            Content = "📵", FontSize = 16, Width = 44, Height = 34, Focusable = false, Background = Brushes.Transparent,
             Foreground = Brushes.White, HorizontalContentAlignment = HorizontalAlignment.Center,
         };
         ToolTip.SetTip(b, "Also play the sound on the phone");
@@ -351,7 +486,7 @@ public sealed class MirrorWindow : Window
     {
         var b = new Button
         {
-            Content = "🔅", FontSize = 16, Width = 56, Height = 34, Focusable = false, Background = Brushes.Transparent,
+            Content = "🔅", FontSize = 16, Width = 44, Height = 34, Focusable = false, Background = Brushes.Transparent,
             Foreground = Brushes.White, HorizontalContentAlignment = HorizontalAlignment.Center,
         };
         ToolTip.SetTip(b, "Dim the phone screen while mirroring");

@@ -115,6 +115,12 @@ public sealed class PhoneMirrorClient : IDisposable
         return SendAsync(MirrorMessageTypes.Input, wire);
     }
 
+    /// <summary>"fast", "smooth" (default) or "sharp"; the phone switches without a new session.</summary>
+    public Task<bool> SetQualityAsync(string mode) =>
+        State == PhoneMirrorState.Streaming
+            ? SendAsync(MirrorMessageTypes.Quality, new WireMirrorQuality { SessionId = _sessionId, Mode = mode })
+            : Task.FromResult(false);
+
     public Task RequestKeyFrameAsync() =>
         State == PhoneMirrorState.Streaming
             ? SendAsync(MirrorMessageTypes.KeyFrame, new WireMirrorControl { SessionId = _sessionId })

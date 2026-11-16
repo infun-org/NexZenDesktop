@@ -400,6 +400,31 @@ public class NexShareOrchestrator : INexShareOrchestrator
 
     public string? ConnectedDeviceId => _connectedDeviceId;
 
+    public async Task<bool> ConnectOverTunnelAsync(int localPort, string label)
+    {
+        await DisconnectCurrentAsync();
+        // The old transport's OnDisconnected may not have run yet; ConnectCoreAsync would then think
+        // a connection is still current and do nothing.
+        lock (_connectionLock)
+        {
+            if (_currentConnection != null)
+            {
+                _currentConnection.OnMessageReceived -= Client_OnMessageReceived;
+                _currentConnection.OnDisconnected -= OnCurrentConnectionDisconnected;
+                _currentConnection = null;
+            }
+        }
+        for (var i = 0; i < 20 && _isConnecting; i++) await Task.Delay(50);
+        await ConnectCoreAsync(new DiscoveryMessage
+        {
+            DeviceId = string.Empty, // learned from the phone's HELLO
+            DeviceName = label,
+            Host = "127.0.0.1",
+            TcpPort = localPort,
+        });
+        return _currentConnection?.IsConnected == true;
+    }
+
     public async Task<bool> SendEnvelopeAsync(WireEnvelope envelope)
     {
         var connection = _currentConnection;

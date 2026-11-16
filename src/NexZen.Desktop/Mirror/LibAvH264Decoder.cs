@@ -82,6 +82,24 @@ internal sealed unsafe class LibAvH264Decoder : IDisposable
     /// Decodes one access unit (Annex-B). For each picture, <paramref name="onFrame"/> gets a BGRA
     /// buffer (width*height*4, reused) on the calling thread. Returns false on a decoding error.
     /// </summary>
+    /// <summary>Where converted pictures go when written directly (no intermediate copy).</summary>
+    public interface IFrameSink
+    {
+        /// <summary>Returns a BGRA buffer of at least height*stride bytes for a picture of this size.</summary>
+        bool Begin(int width, int height, out IntPtr destination, out int stride);
+        void End(int width, int height);
+    }
+
+    private IFrameSink? _sink;
+
+    /// <summary>Decodes one access unit and converts each picture straight into <paramref name="sink"/>.</summary>
+    public bool Decode(byte[] accessUnit, IFrameSink sink)
+    {
+        _sink = sink;
+        try { return Decode(accessUnit, static (_, _, _) => { }); }
+        finally { _sink = null; }
+    }
+
     public bool Decode(byte[] accessUnit, Action<byte[], int, int> onFrame)
     {
         if (_ctx == IntPtr.Zero) return false;
@@ -123,6 +141,17 @@ internal sealed unsafe class LibAvH264Decoder : IDisposable
         }
         Width = w;
         Height = h;
+        if (_sink != null)
+        {
+            if (!_sink.Begin(w, h, out var target, out var targetStride)) return;
+            var tData = stackalloc IntPtr[4];
+            var tStride = stackalloc int[4];
+            tData[0] = target;
+            tStride[0] = targetStride;
+            _api.sws_scale(_sws, (IntPtr*)f, (int*)(f + FrameLinesizeOffset), 0, h, tData, tStride);
+            _sink.End(w, h);
+            return;
+        }
         var size = w * h * 4;
         if (_bgra.Length != size) _bgra = new byte[size];
         fixed (byte* dst = _bgra)
