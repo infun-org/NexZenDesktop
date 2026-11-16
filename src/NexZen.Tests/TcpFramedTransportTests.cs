@@ -179,7 +179,12 @@ public class TcpFramedTransportTests
         _ = pc.StartReceiveLoopAsync();
         Assert.True(await Task.WhenAny(got.Task, Task.Delay(5000)) == got.Task);
         var prompt = await got.Task;
-        Assert.Equal(phone.Sas, prompt.Code);
+        // The phone side derives its code on its own task; on a busy machine the PC can
+        // raise the prompt first, so wait for it (up to 5 s) before comparing.
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (Volatile.Read(ref phone.Sas) == null && DateTime.UtcNow < deadline)
+            await Task.Delay(10);
+        Assert.Equal(Volatile.Read(ref phone.Sas), prompt.Code);
         prompt.Confirm();
         Take(phone.Received, NexShareMessageTypes.SasConfirm);
         pc.Dispose();
