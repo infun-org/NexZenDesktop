@@ -129,7 +129,9 @@ class Program
                 cefSettingsArgs.Add(new KeyValuePair<string, string>("load-extension", string.Join(",", extensionPaths)));
             }
 
-            var logFile = Path.Combine(AppContext.BaseDirectory, "cef.log");
+            // Beside startup.log: the app folder when it is writable (development builds),
+            // otherwise ~/.local/share/NexZenDesktop (installed under /opt or /usr).
+            var logFile = Path.Combine(StartupLog.Directory, "cef.log");
             StartupLog.Write("CefRuntimeLoader.Initialize log=" + logFile);
             var cefSettings = new CefSettings
             {
@@ -214,6 +216,11 @@ class Program
         static string _path = "";
         static readonly object WriteGate = new();
 
+        /// <summary>Writable folder that holds the logs.</summary>
+        public static string Directory => _path.Length > 0
+            ? Path.GetDirectoryName(_path)!
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NexZenDesktop");
+
         public static void Open()
         {
             _path = Path.Combine(AppContext.BaseDirectory, "startup.log");
@@ -226,7 +233,7 @@ class Program
                 var dir = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                     "NexZenDesktop");
-                Directory.CreateDirectory(dir);
+                System.IO.Directory.CreateDirectory(dir);
                 _path = Path.Combine(dir, "startup.log");
                 try { File.WriteAllText(_path, ""); } catch { _path = ""; }
             }

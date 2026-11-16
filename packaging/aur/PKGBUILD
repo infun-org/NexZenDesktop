@@ -1,0 +1,31 @@
+# Maintainer: Infun <https://github.com/infun-org>
+pkgname=nexzen-desktop-bin
+_pkgname=nexzen-desktop
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Chromium-based browser that mirrors and controls your Android phone side by side (NexZen)"
+arch=('x86_64')
+url="https://github.com/infun-org/NexZenDesktop"
+license=('GPL-3.0-or-later')
+depends=('nss' 'nspr' 'at-spi2-core' 'libcups' 'dbus' 'glib2' 'libx11' 'libxcomposite' 'libxdamage'
+         'libxext' 'libxfixes' 'libxrandr' 'libxcb' 'libxkbcommon' 'mesa' 'expat' 'cairo' 'pango'
+         'systemd-libs' 'alsa-lib' 'fontconfig' 'openssl' 'icu')
+optdepends=('ffmpeg: NexZen Mirror video and sound'
+            'libpulse: phone sound while mirroring'
+            'android-tools: NexZen Mirror over USB')
+provides=("$_pkgname")
+conflicts=("$_pkgname")
+options=('!strip' '!debug')
+source=("https://github.com/infun-org/NexZenDesktop/releases/download/v$pkgver/$_pkgname-$pkgver-linux-x64.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+  cd "$srcdir/$_pkgname-$pkgver-linux-x64"
+  install -d "$pkgdir/opt/$_pkgname" "$pkgdir/usr/bin"
+  cp -a app dotnet nexzen-desktop VERSION "$pkgdir/opt/$_pkgname/"
+  cp -a share "$pkgdir/usr/"
+  ln -s "/opt/$_pkgname/nexzen-desktop" "$pkgdir/usr/bin/$_pkgname"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 THIRD-PARTY-NOTICES.md "$pkgdir/usr/share/licenses/$pkgname/THIRD-PARTY-NOTICES.md"
+  install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+}

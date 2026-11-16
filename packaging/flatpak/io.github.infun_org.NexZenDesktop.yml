@@ -1,0 +1,44 @@
+# Flatpak build of the prebuilt release tree.
+#   packaging/linux/build-release.sh --no-tar ...   then
+#   ln -sfn ../linux/out/nexzen-desktop-<version>-linux-x64 packaging/flatpak/tree   (CI extracts the tarball here)
+#   flatpak-builder --user --install --force-clean build packaging/flatpak/io.github.infun_org.NexZenDesktop.yml
+# Freedesktop 25.08 brings the codecs-extra extension (FFmpeg with H.264) that NexZen Mirror decodes with.
+id: io.github.infun_org.NexZenDesktop
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+command: nexzen-desktop
+separate-locales: false
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --socket=x11
+  - --socket=pulseaudio
+  # GPU page painting (dmabuf/EGL) and webcams/USB devices for web pages.
+  - --device=all
+  # NexShare discovery over Bluetooth LE (BlueZ).
+  - --allow=bluetooth
+  - --system-talk-name=org.bluez
+  - --talk-name=org.freedesktop.Notifications
+  - --talk-name=org.kde.StatusNotifierWatcher
+  - --filesystem=xdg-download
+modules:
+  - name: nexzen-desktop
+    buildsystem: simple
+    sources:
+      - type: dir
+        path: tree
+    build-commands:
+      - install -d /app/lib/nexzen-desktop /app/bin
+      - cp -a app dotnet nexzen-desktop VERSION /app/lib/nexzen-desktop/
+      - ln -s /app/lib/nexzen-desktop/nexzen-desktop /app/bin/nexzen-desktop
+      - install -Dm644 share/applications/nexzen-desktop.desktop /app/share/applications/${FLATPAK_ID}.desktop
+      - sed -i "s/^Icon=.*/Icon=${FLATPAK_ID}/" /app/share/applications/${FLATPAK_ID}.desktop
+      - |
+        for d in share/icons/hicolor/*/apps; do
+          install -Dm644 "$d/nexzen-desktop.png" "/app/$d/${FLATPAK_ID}.png"
+        done
+      - install -Dm644 share/metainfo/nexzen-desktop.metainfo.xml /app/share/metainfo/${FLATPAK_ID}.metainfo.xml
+      - sed -i -e "s#<id>nexzen-desktop</id>#<id>${FLATPAK_ID}</id>#" -e "s#nexzen-desktop.desktop#${FLATPAK_ID}.desktop#" /app/share/metainfo/${FLATPAK_ID}.metainfo.xml
+      - install -Dm644 LICENSE /app/share/licenses/${FLATPAK_ID}/LICENSE
+      - install -Dm644 THIRD-PARTY-NOTICES.md /app/share/licenses/${FLATPAK_ID}/THIRD-PARTY-NOTICES.md

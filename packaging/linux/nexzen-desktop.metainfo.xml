@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>nexzen-desktop</id>
+  <name>NexZen</name>
+  <summary>Browse the web and mirror your Android phone side by side</summary>
+  <developer id="org.infun">
+    <name>Infun</name>
+  </developer>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <launchable type="desktop-id">nexzen-desktop.desktop</launchable>
+  <url type="homepage">https://github.com/infun-org/NexZenDesktop</url>
+  <url type="bugtracker">https://github.com/infun-org/NexZenDesktop/issues</url>
+  <description>
+    <p>
+      NexZen is a Chromium-based desktop browser that works hand in hand with NexZen for Android:
+      see and control your phone next to the page you are reading, and move links and files between devices.
+    </p>
+    <ul>
+      <li>SuperMenu: every browser function one right-click away, right under the cursor</li>
+      <li>NexZen Mirror: mirror and control your Android phone with sound, over USB or Wi-Fi, end-to-end encrypted</li>
+      <li>NexShare: send links, text and files between phone and computer</li>
+      <li>Workspaces, incognito windows, per-site privacy and Custom CSS</li>
+    </ul>
+  </description>
+  <categories>
+    <category>Network</category>
+    <category>WebBrowser</category>
+  </categories>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="@VERSION@" date="2026-11-16"/>
+  </releases>
+</component>

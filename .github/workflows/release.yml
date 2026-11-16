@@ -1,0 +1,156 @@
+name: Release
+
+# Push a tag such as v0.1.0 to build the Linux packages and publish them as a GitHub release.
+# "Run workflow" builds the same packages as workflow artifacts without making a release.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to build (without the leading v)
+        required: true
+        default: 0.1.0
+
+permissions:
+  contents: write
+
+env:
+  CEF_NAME: cef_binary_152.0.10+g82a832e+chromium-152.0.7977.140_linux64_minimal
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  DOTNET_NOLOGO: '1'
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version
+        id: v
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then v="${GITHUB_REF_NAME#v}"; else v="${{ inputs.version }}"; fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm imagemagick libfuse2t64
+          curl -fsSL -o "$RUNNER_TEMP/appimagetool" \
+            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x "$RUNNER_TEMP/appimagetool"
+
+      - name: Cache CEF 152
+        id: cef-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/cef
+          key: ${{ env.CEF_NAME }}
+
+      - name: Download CEF 152
+        if: steps.cef-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$RUNNER_TEMP/cef"
+          url="https://cef-builds.spotifycdn.com/$(printf '%s' "$CEF_NAME" | sed 's/+/%2B/g').tar.bz2"
+          curl -fsSL -o "$RUNNER_TEMP/cef.tar.bz2" "$url"
+          curl -fsSL -o "$RUNNER_TEMP/cef.tar.bz2.sha1" "$url.sha1"
+          echo "$(cat "$RUNNER_TEMP/cef.tar.bz2.sha1")  $RUNNER_TEMP/cef.tar.bz2" | sha1sum -c -
+          tar -xjf "$RUNNER_TEMP/cef.tar.bz2" -C "$RUNNER_TEMP/cef"
+          rm "$RUNNER_TEMP/cef.tar.bz2"
+
+      - name: Test
+        run: dotnet test src/NexZen.Tests/NexZen.Tests.csproj -c Release -p:Cef152Root="$RUNNER_TEMP/cef/$CEF_NAME"
+
+      - name: Build release tree and tarball
+        run: packaging/linux/build-release.sh --version "${{ steps.v.outputs.version }}" --cef "$RUNNER_TEMP/cef/$CEF_NAME"
+
+      - name: deb, rpm, AppImage
+        env:
+          APPIMAGETOOL: ${{ runner.temp }}/appimagetool
+        run: packaging/linux/make-packages.sh --version "${{ steps.v.outputs.version }}" deb rpm appimage
+
+      - name: AUR PKGBUILD for this release
+        run: |
+          v="${{ steps.v.outputs.version }}"
+          out=packaging/linux/out
+          sum="$(sha256sum "$out/nexzen-desktop-$v-linux-x64.tar.gz" | cut -d' ' -f1)"
+          mkdir -p "$out/aur"
+          sed -e "s/^pkgver=.*/pkgver=$v/" -e "s/^pkgrel=.*/pkgrel=1/" \
+              -e "s/^sha256sums=.*/sha256sums=('$sum')/" packaging/aur/PKGBUILD > "$out/aur/PKGBUILD"
+          (cd "$out" && sha256sum nexzen-desktop-*.tar.gz *.deb *.rpm *.AppImage > SHA256SUMS)
+          cat "$out/SHA256SUMS"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nexzen-desktop-${{ steps.v.outputs.version }}-linux
+          path: |
+            packaging/linux/out/*.tar.gz
+            packaging/linux/out/*.deb
+            packaging/linux/out/*.rpm
+            packaging/linux/out/*.AppImage
+            packaging/linux/out/SHA256SUMS
+            packaging/linux/out/aur/PKGBUILD
+
+  flatpak:
+    needs: linux
+    runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version
+        id: v
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then v="${GITHUB_REF_NAME#v}"; else v="${{ inputs.version }}"; fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: nexzen-desktop-${{ steps.v.outputs.version }}-linux
+          path: dist
+
+      - name: Release tree
+        run: |
+          v="${{ steps.v.outputs.version }}"
+          tar -xzf "dist/nexzen-desktop-$v-linux-x64.tar.gz" -C packaging/flatpak
+          mv "packaging/flatpak/nexzen-desktop-$v-linux-x64" packaging/flatpak/tree
+
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: NexZen-${{ steps.v.outputs.version }}-x86_64.flatpak
+          manifest-path: packaging/flatpak/io.github.infun_org.NexZenDesktop.yml
+          cache-key: flatpak-builder-${{ github.sha }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nexzen-desktop-${{ steps.v.outputs.version }}-flatpak
+          path: NexZen-${{ steps.v.outputs.version }}-x86_64.flatpak
+
+  release:
+    if: github.event_name == 'push'
+    needs: [linux, flatpak]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Draft the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          cd dist
+          sha256sum "NexZen-$v-x86_64.flatpak" >> SHA256SUMS
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+            --title "NexZen Desktop $v" --generate-notes --draft \
+            nexzen-desktop-*.tar.gz *.deb *.rpm *.AppImage *.flatpak SHA256SUMS

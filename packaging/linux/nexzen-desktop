@@ -1,0 +1,8 @@
+#!/bin/sh
+# NexZen Desktop launcher: uses the bundled .NET runtime when the release tree has one.
+here="$(dirname "$(readlink -f "$0")")"
+if [ -d "$here/dotnet/shared/Microsoft.NETCore.App" ]; then
+  DOTNET_ROOT="$here/dotnet"
+  export DOTNET_ROOT
+fi
+exec "$here/app/NexZen.Desktop" "$@"

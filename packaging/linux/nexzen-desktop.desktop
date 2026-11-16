@@ -1,0 +1,22 @@
+[Desktop Entry]
+Type=Application
+Name=NexZen
+GenericName=Web Browser
+Comment=Browse the web and mirror your Android phone side by side
+Exec=nexzen-desktop %U
+Icon=nexzen-desktop
+Terminal=false
+StartupNotify=true
+StartupWMClass=NexZen
+Categories=Network;WebBrowser;
+MimeType=text/html;application/xhtml+xml;x-scheme-handler/http;x-scheme-handler/https;
+Keywords=browser;web;internet;mirror;phone;android;
+Actions=new-window;new-private-window;
+
+[Desktop Action new-window]
+Name=New Window
+Exec=nexzen-desktop
+
+[Desktop Action new-private-window]
+Name=New Incognito Window
+Exec=nexzen-desktop --incognito

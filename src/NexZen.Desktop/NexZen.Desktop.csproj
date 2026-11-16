@@ -65,7 +65,8 @@
     <ItemGroup>
       <_CefGlueBrowserProcessHost Include="$(MSBuildThisFileDirectory)../libs_cefglue/CefGlue.BrowserProcess/bin/$(Configuration)/net8.0/Xilium.CefGlue.BrowserProcess" />
       <_CefGlueBrowserProcessHost Include="$(MSBuildThisFileDirectory)../libs_cefglue/CefGlue.BrowserProcess/bin/$(Configuration)/net8.0/Xilium.CefGlue.BrowserProcess.dll" />
-      <_CefGlueBrowserProcessHost Include="$(MSBuildThisFileDirectory)../libs_cefglue/CefGlue.BrowserProcess/bin/$(Configuration)/net8.0/Xilium.CefGlue.BrowserProcess.pdb" />
+      <_CefGlueBrowserProcessHost Include="$(MSBuildThisFileDirectory)../libs_cefglue/CefGlue.BrowserProcess/bin/$(Configuration)/net8.0/Xilium.CefGlue.BrowserProcess.pdb"
+                                  Condition="Exists('$(MSBuildThisFileDirectory)../libs_cefglue/CefGlue.BrowserProcess/bin/$(Configuration)/net8.0/Xilium.CefGlue.BrowserProcess.pdb')" />
       <_CefGlueBrowserProcessHost Include="$(MSBuildThisFileDirectory)../libs_cefglue/CefGlue.BrowserProcess/bin/$(Configuration)/net8.0/Xilium.CefGlue.BrowserProcess.deps.json" />
       <_CefGlueBrowserProcessHost Include="$(MSBuildThisFileDirectory)../libs_cefglue/CefGlue.BrowserProcess/bin/$(Configuration)/net8.0/Xilium.CefGlue.BrowserProcess.runtimeconfig.json" />
     </ItemGroup>

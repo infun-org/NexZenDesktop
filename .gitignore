@@ -48,3 +48,6 @@ build_errors.txt
 /test_*.cs
 /scratch_*.cs
 /dotnet-install.sh
+
+# Release packaging output
+packaging/linux/out/

@@ -48,8 +48,13 @@ for name in resources.pak chrome_100_percent.pak chrome_200_percent.pak; do
 done
 rm -rf "$app/locales"
 ln -sfn "$root/Resources/locales" "$app/locales"
-cp -f "$app/Xilium.CefGlue.dll" "$dest/Xilium.CefGlue.dll"
-cp -f "$app/Xilium.CefGlue.pdb" "$dest/Xilium.CefGlue.pdb"
-cp -f "$app/Xilium.CefGlue.Common.Shared.dll" "$dest/Xilium.CefGlue.Common.Shared.dll"
-cp -f "$app/Xilium.CefGlue.Common.Shared.pdb" "$dest/Xilium.CefGlue.Common.Shared.pdb"
+for name in Xilium.CefGlue Xilium.CefGlue.Common.Shared; do
+  cp -f "$app/$name.dll" "$dest/$name.dll"
+  # No .pdb when building with DebugType=none (release packaging).
+  if [[ -f "$app/$name.pdb" ]]; then
+    cp -f "$app/$name.pdb" "$dest/$name.pdb"
+  else
+    rm -f "$dest/$name.pdb"
+  fi
+done
 echo "CEF 152 linked into $dest"
