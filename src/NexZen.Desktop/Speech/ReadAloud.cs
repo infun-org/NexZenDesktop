@@ -11,7 +11,7 @@ using NexZen.Infrastructure.Speech;
 
 namespace NexZen.Desktop.Speech;
 
-public enum ReadAloudState { Idle, Preparing, Speaking, Paused }
+public enum ReadAloudState { Idle, OfferDownload, Downloading, Preparing, Speaking, Paused }
 
 /// <summary>
 /// Reads text aloud with the local ZONOS3 voice: Vietnamese text has its numbers, dates and units
@@ -25,6 +25,8 @@ public static class ReadAloud
     private static CancellationTokenSource? _current;
     private static PulseAudioPlayer? _player;
     private static string? _voiceId = LoadVoicePreference();
+    private static (string Text, string? Title)? _pending;
+    private static CancellationTokenSource? _install;
 
     static ReadAloud()
     {
@@ -61,6 +63,18 @@ public static class ReadAloud
 
     public static void Speak(string text, string? title = null)
     {
+        if (!Server.IsInstalled)
+        {
+            // First use: offer the one-time download, then read this text.
+            _pending = (text, title);
+            if (State is not ReadAloudState.Downloading)
+            {
+                Error = null;
+                var mb = SpeechInstaller.DownloadBytes / 1_000_000;
+                Set(ReadAloudState.OfferDownload, $"Read aloud needs the NexZen voice (one-time download, {mb:N0} MB).");
+            }
+            return;
+        }
         CancellationTokenSource cts;
         lock (Gate)
         {
@@ -84,9 +98,56 @@ public static class ReadAloud
 
     public static void Stop()
     {
+        _pending = null;
+        _install?.Cancel();
         lock (Gate)
             StopLocked();
         Set(ReadAloudState.Idle, "");
+    }
+
+    /// <summary>Downloads the voice (server, model, voices), then reads the text that asked for it.</summary>
+    public static void Install()
+    {
+        if (State == ReadAloudState.Downloading)
+            return;
+        var cts = new CancellationTokenSource();
+        _install = cts;
+        Error = null;
+        Set(ReadAloudState.Downloading, "Downloading the NexZen voice…");
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var installer = new SpeechInstaller(Server.Directory);
+                var lastPercent = -1;
+                await installer.InstallAsync(new Progress<SpeechInstallProgress>(p =>
+                {
+                    var percent = p.Total <= 0 ? 0 : (int)(p.Done * 100 / p.Total);
+                    if (percent == lastPercent || State != ReadAloudState.Downloading) return;
+                    lastPercent = percent;
+                    Set(ReadAloudState.Downloading,
+                        $"Downloading the NexZen voice… {percent}% ({p.Done / 1_000_000:N0} / {p.Total / 1_000_000:N0} MB)");
+                }), cts.Token).ConfigureAwait(false);
+                _install = null;
+                var pending = _pending;
+                _pending = null;
+                if (pending is { } p && Server.IsInstalled)
+                    Speak(p.Text, p.Title);
+                else
+                    Set(ReadAloudState.Idle, "");
+            }
+            catch (OperationCanceledException)
+            {
+                Set(ReadAloudState.Idle, "");
+            }
+            catch (Exception ex)
+            {
+                Program.StartupLog.Write("[ReadAloud] install failed: " + ex.GetType().Name + ": " + ex.Message);
+                _install = null;
+                Error = ex.Message;
+                Set(ReadAloudState.OfferDownload, "Download failed: " + ex.Message + " Try again?");
+            }
+        });
     }
 
     private static void StopLocked()

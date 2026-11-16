@@ -13,6 +13,7 @@ public sealed class ReadAloudBar : Border
 {
     private readonly TextBlock _status;
     private readonly Button _pause;
+    private readonly Button _download;
     private readonly ComboBox _voice;
     private bool _syncing;
 
@@ -34,13 +35,24 @@ public sealed class ReadAloudBar : Border
             FontSize = 13,
             VerticalAlignment = VerticalAlignment.Center,
             MinWidth = 150,
-            MaxWidth = 320,
+            MaxWidth = 420,
             TextTrimming = TextTrimming.CharacterEllipsis,
         };
         _pause = MakeButton("⏸", "Pause / resume");
         _pause.Click += (_, _) => ReadAloud.TogglePause();
-        var stop = MakeButton("⏹", "Stop reading");
+        var stop = MakeButton("⏹", "Stop");
         stop.Click += (_, _) => ReadAloud.Stop();
+        _download = new Button
+        {
+            Content = "Download",
+            Height = 30,
+            Padding = new Thickness(14, 0),
+            VerticalContentAlignment = VerticalAlignment.Center,
+            Background = new SolidColorBrush(Color.FromRgb(0x2E, 0x7D, 0x32)),
+            Foreground = Brushes.White,
+            CornerRadius = new CornerRadius(15),
+        };
+        _download.Click += (_, _) => ReadAloud.Install();
         _voice = new ComboBox
         {
             MinWidth = 110,
@@ -63,6 +75,7 @@ public sealed class ReadAloudBar : Border
                 new TextBlock { Text = "🔊", FontSize = 15, VerticalAlignment = VerticalAlignment.Center },
                 _status,
                 _voice,
+                _download,
                 _pause,
                 stop,
             },
@@ -99,6 +112,11 @@ public sealed class ReadAloudBar : Border
         _status.Text = ReadAloud.Status;
         _pause.Content = state == ReadAloudState.Paused ? "▶" : "⏸";
         _pause.IsEnabled = state is ReadAloudState.Speaking or ReadAloudState.Paused;
+        var reading = state is ReadAloudState.Preparing or ReadAloudState.Speaking or ReadAloudState.Paused;
+        _pause.IsVisible = reading;
+        _voice.IsVisible = reading;
+        _download.IsVisible = state == ReadAloudState.OfferDownload;
+        _status.TextWrapping = reading ? TextWrapping.NoWrap : TextWrapping.Wrap;
 
         _syncing = true;
         try

@@ -4595,7 +4595,8 @@ public partial class MainWindow : Window
     private void UpdateReadAloudLabel(PageCopyContext copy)
     {
         _superMenuControl.SetReadAloudLabel(
-            Speech.ReadAloud.State != Speech.ReadAloudState.Idle ? "Stop reading aloud"
+            Speech.ReadAloud.State is Speech.ReadAloudState.Preparing or Speech.ReadAloudState.Speaking
+                or Speech.ReadAloudState.Paused ? "Stop reading aloud"
             : !copy.IsImage && !string.IsNullOrWhiteSpace(copy.SelectionText) ? "Read selection aloud"
             : "Read page aloud");
     }
@@ -4605,16 +4606,10 @@ public partial class MainWindow : Window
     {
         var copy = _copyContext;
         CloseSuperMenu();
-        if (Speech.ReadAloud.State != Speech.ReadAloudState.Idle)
+        if (Speech.ReadAloud.State is Speech.ReadAloudState.Preparing or Speech.ReadAloudState.Speaking
+            or Speech.ReadAloudState.Paused)
         {
             Speech.ReadAloud.Stop();
-            return;
-        }
-        if (!Speech.ReadAloud.IsInstalled)
-        {
-            ShowCopyNotification("Read aloud",
-                "The NexZen voice is not installed yet (" + Speech.ReadAloud.SpeechDirectory + ").",
-                null, NotificationType.Warning);
             return;
         }
         var selection = copy is { IsImage: false } ? copy.SelectionText?.Trim() : null;

@@ -18,7 +18,9 @@ It builds on the following third-party software, each under its own license:
 | [Net.Codecrete.QrCodeGenerator](https://github.com/manuelbl/QrCodeGenerator) | QR codes | MIT |
 | [three.js](https://github.com/mrdoob/three.js) (incl. GLTFLoader, RoomEnvironment, BufferGeometryUtils) | 3D companion on internal pages | MIT |
 | [FFmpeg](https://ffmpeg.org) — libavcodec, libavutil, libswscale | NexZen Mirror video/audio decoding (system libraries loaded at run time, not bundled) | LGPL-2.1-or-later (depending on the build) |
-| PulseAudio `libpulse-simple` | NexZen Mirror sound output (system library, not bundled) | LGPL-2.1-or-later |
+| PulseAudio `libpulse-simple` | NexZen Mirror and read aloud sound output (system library, not bundled) | LGPL-2.1-or-later |
+| [ZONOS3-Mini](https://huggingface.co/Zyphra/ZONOS3-Mini) model (Zyphra) | Read aloud voice (downloaded on first use, not bundled) | Apache-2.0 |
+| [zonos3-server](https://github.com/Zyphra/ZONOS3-Mini) (Zyphra) with [ggml](https://github.com/ggml-org/ggml) and [zyphra-textnorm](https://github.com/Zyphra/zyphra-textnorm) | Read aloud speech server (built by `.github/workflows/speech-runtime.yml`, downloaded on first use; its license texts are installed next to it) | MIT (NeMo text-processing grammars: Apache-2.0) |
 | [xUnit](https://github.com/xunit/xunit) | Tests only | Apache-2.0 |
 
 The full license texts are available at the linked projects and in their NuGet packages.

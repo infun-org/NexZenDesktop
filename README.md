@@ -75,6 +75,10 @@ and browse with GPU-smooth rendering and privacy tools built in.
 - **Tab switcher** (Ctrl+Tab), **Print** with page setup and live preview, built-in **DevTools** (F12),
   **Chrome extensions**, device-size **page views**.
 - **AI Function**: an assistant that can read the current page, with support for local models.
+- **Read aloud**: SuperMenu → *Read page aloud* / *Read selection aloud* reads with a natural local voice
+  ([ZONOS3-Mini](https://huggingface.co/Zyphra/ZONOS3-Mini), on this computer, no cloud). Vietnamese numbers, dates,
+  money, units and common abbreviations are spelled out, and every sentence is levelled to the same loudness.
+  The voice (about 1.1 GB) is downloaded on first use.
 - Careful **keyboard/IME** handling for Vietnamese typing in web pages (fcitx5), numpad that follows NumLock.
 
 <p align="center"><img src="docs/screenshots/pinned-windows.webp" alt="Two pinned mini browsers floating over a page"></p>

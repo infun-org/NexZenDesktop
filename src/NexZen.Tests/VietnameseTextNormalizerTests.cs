@@ -134,6 +134,15 @@ public class VietnameseTextNormalizerTests
     }
 
     [Fact]
+    public void Finds_runtime_hash_in_sha256sums()
+    {
+        const string sums = "abc123  zonos3-server-linux-x64.tar.gz\nfff000 *other.tar.gz\n";
+        Assert.Equal("abc123", NexZen.Infrastructure.Speech.SpeechInstaller.ExpectedHash(sums, "zonos3-server-linux-x64.tar.gz"));
+        Assert.Equal("fff000", NexZen.Infrastructure.Speech.SpeechInstaller.ExpectedHash(sums, "other.tar.gz"));
+        Assert.Null(NexZen.Infrastructure.Speech.SpeechInstaller.ExpectedHash(sums, "missing.tar.gz"));
+    }
+
+    [Fact]
     public void Splits_sentences_and_joins_short_ones()
     {
         var parts = SpeechTextSplitter.Split("Xin chào. Hôm nay là một ngày đẹp trời để đọc tin tức! Bạn đã sẵn sàng chưa?\nBắt đầu nhé.");

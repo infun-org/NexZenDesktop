@@ -1,0 +1,86 @@
+name: Speech runtime
+
+# Builds Zyphra's zonos3-server (ZONOS3-Mini text to speech, ggml) for NexZen's read aloud and
+# publishes it as the pre-release "speech-runtime-<n>", which NexZen downloads on first use.
+# Run it by hand (Actions → Speech runtime → Run workflow) or push a tag speech-runtime-<n>.
+on:
+  push:
+    tags: ['speech-runtime-*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to publish (empty = build only)
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+env:
+  # Zyphra/ZONOS3-Mini commit the server is built from (MIT; tested with the model revision in SpeechInstaller.cs).
+  ZONOS_COMMIT: 96d9e0ec1e39083ed336ac78f24e3dbc93721c0f
+
+jobs:
+  linux-x64:
+    # Ubuntu 22.04 (glibc 2.35) so the binary also runs on older distributions.
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Source
+        run: |
+          git init zonos
+          cd zonos
+          git remote add origin https://github.com/Zyphra/ZONOS3-Mini.git
+          git fetch --depth 1 origin "$ZONOS_COMMIT"
+          git checkout FETCH_HEAD
+          git submodule update --init --depth 1 servers/ggml/ggml third_party/zyphra-textnorm
+
+      - name: Build
+        working-directory: zonos/servers/ggml
+        run: |
+          cargo --version
+          # Portable x86-64 build: AVX2/FMA (x86-64-v3) instead of the build machine's CPU, static
+          # ggml and libstdc++, ggml's own thread pool instead of OpenMP: one file, no extra libraries.
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
+            -DGGML_NATIVE=OFF -DGGML_OPENMP=OFF \
+            -DGGML_AVX=ON -DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_F16C=ON -DGGML_BMI2=ON \
+            -DCMAKE_EXE_LINKER_FLAGS="-static-libstdc++ -static-libgcc"
+          cmake --build build -j"$(nproc)" --target zonos3-server
+          ldd build/zonos3-server
+
+      - name: Package
+        run: |
+          mkdir -p out/zonos3-server
+          cp zonos/servers/ggml/build/zonos3-server out/zonos3-server/
+          strip out/zonos3-server/zonos3-server
+          cp zonos/LICENSE out/zonos3-server/LICENSE-ZONOS3.txt
+          cp zonos/NOTICE out/zonos3-server/NOTICE-ZONOS3.txt
+          cp zonos/servers/ggml/ggml/LICENSE out/zonos3-server/LICENSE-ggml.txt
+          cp zonos/third_party/zyphra-textnorm/LICENSE out/zonos3-server/LICENSE-zyphra-textnorm.txt
+          for f in zonos/third_party/zyphra-textnorm/licenses/* zonos/third_party/licenses/*; do
+            [ -f "$f" ] && cp "$f" "out/zonos3-server/LICENSE-$(basename "$f")"
+          done
+          echo "Zyphra/ZONOS3-Mini $ZONOS_COMMIT" > out/zonos3-server/SOURCE.txt
+          tar -C out -czf out/zonos3-server-linux-x64.tar.gz zonos3-server
+          (cd out && sha256sum zonos3-server-linux-x64.tar.gz > SHA256SUMS && cat SHA256SUMS)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zonos3-server-linux-x64
+          path: |
+            out/zonos3-server-linux-x64.tar.gz
+            out/SHA256SUMS
+
+      - name: Publish
+        if: startsWith(github.ref, 'refs/tags/speech-runtime-') || inputs.tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ inputs.tag }}"
+          [ -n "$tag" ] || tag="$GITHUB_REF_NAME"
+          notes="zonos3-server (Zyphra ZONOS3-Mini, MIT) built from Zyphra/ZONOS3-Mini@$ZONOS_COMMIT for NexZen's read aloud. NexZen downloads it on first use; you do not need to install it yourself."
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$tag" out/zonos3-server-linux-x64.tar.gz out/SHA256SUMS --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$tag" out/zonos3-server-linux-x64.tar.gz out/SHA256SUMS --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" --prerelease --title "Speech runtime ($tag)" --notes "$notes"
+          fi
