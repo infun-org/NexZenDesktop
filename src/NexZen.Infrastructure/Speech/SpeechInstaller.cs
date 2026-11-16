@@ -37,6 +37,21 @@ public sealed class SpeechInstaller : IDisposable
             "8430a2852291d874f327666d05bd15ee854a009cc54b9d3cdba9005d6bc7f59b"),
     ];
 
+    /// <summary>Speaker encoder, fetched the first time someone makes a voice from a recording.</summary>
+    public static readonly (string Source, string Target, long Size, string Sha256) EncoderFile =
+        ("gguf/spk-encoder.gguf", "models/spk-encoder.gguf", 45_385_728,
+            "9539f340b70be246005403b9c254732e180e85e0b3c57fb1973f0d6bc6c59bdc");
+
+    public async Task InstallEncoderAsync(IProgress<SpeechInstallProgress>? progress, CancellationToken cancellationToken)
+    {
+        var (source, target, size, sha) = EncoderFile;
+        var path = Path.Combine(_directory, target);
+        if (File.Exists(path) && new FileInfo(path).Length == size && await HashMatchesAsync(path, sha, cancellationToken))
+            return;
+        await DownloadAsync(new Uri(ModelBase + source), path, sha,
+            done => progress?.Report(new SpeechInstallProgress(done, size, "spk-encoder.gguf")), cancellationToken);
+    }
+
     /// <summary>Approximate download size, for the offer shown before installing.</summary>
     public static long DownloadBytes => ModelFiles.Sum(f => f.Size) + 2_000_000;
 
@@ -79,7 +94,7 @@ public sealed class SpeechInstaller : IDisposable
             await DownloadAsync(new Uri(ReleaseBase + RuntimeAsset), archive, sha,
                 done => progress?.Report(new SpeechInstallProgress(Math.Min(total, doneBefore + done), total, "zonos3-server")),
                 cancellationToken);
-            await ExtractServerAsync(archive, Path.Combine(_directory, "bin"), cancellationToken);
+            await ExtractServerAsync(archive, Path.Combine(_directory, "bin"), "zonos3-server", cancellationToken);
             File.Delete(archive);
         }
         progress?.Report(new SpeechInstallProgress(total, total, "done"));
@@ -157,7 +172,7 @@ public sealed class SpeechInstaller : IDisposable
         return Convert.ToHexString(hash).Equals(sha256, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static async Task ExtractServerAsync(string archive, string binDirectory, CancellationToken cancellationToken)
+    private static async Task ExtractServerAsync(string archive, string binDirectory, string executable, CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(binDirectory);
         await using var file = File.OpenRead(archive);
@@ -174,13 +189,13 @@ public sealed class SpeechInstaller : IDisposable
             var target = Path.Combine(binDirectory, name);
             await entry.ExtractToFileAsync(target + ".part", overwrite: true, cancellationToken);
             File.Move(target + ".part", target, overwrite: true);
-            if (name == "zonos3-server" && !OperatingSystem.IsWindows())
+            if (name == executable && !OperatingSystem.IsWindows())
                 File.SetUnixFileMode(target, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute
                                              | UnixFileMode.GroupRead | UnixFileMode.GroupExecute
                                              | UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
         }
-        if (!File.Exists(Path.Combine(binDirectory, "zonos3-server")))
-            throw new InvalidDataException("zonos3-server missing from " + Path.GetFileName(archive));
+        if (!File.Exists(Path.Combine(binDirectory, executable)))
+            throw new InvalidDataException(executable + " missing from " + Path.GetFileName(archive));
     }
 
     public void Dispose() => _http.Dispose();

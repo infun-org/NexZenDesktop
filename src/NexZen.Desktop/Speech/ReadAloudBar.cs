@@ -16,12 +16,14 @@ public sealed class ReadAloudBar : Border
     private readonly Button _download;
     private readonly ComboBox _voice;
     private bool _syncing;
+    private readonly object _owner;
 
-    public ReadAloudBar()
+    /// <summary>Shows readings started by <paramref name="owner"/> (its browser window).</summary>
+    public ReadAloudBar(object owner)
     {
+        _owner = owner;
         HorizontalAlignment = HorizontalAlignment.Center;
         VerticalAlignment = VerticalAlignment.Bottom;
-        Margin = new Thickness(0, 0, 0, 24);
         Padding = new Thickness(14, 8);
         CornerRadius = new CornerRadius(22);
         Background = new SolidColorBrush(Color.FromArgb(0xF2, 0x20, 0x22, 0x26));
@@ -108,7 +110,7 @@ public sealed class ReadAloudBar : Border
     public void Refresh()
     {
         var state = ReadAloud.State;
-        IsVisible = state != ReadAloudState.Idle;
+        IsVisible = state != ReadAloudState.Idle && ReferenceEquals(ReadAloud.Origin, _owner);
         _status.Text = ReadAloud.Status;
         _pause.Content = state == ReadAloudState.Paused ? "▶" : "⏸";
         _pause.IsEnabled = state is ReadAloudState.Speaking or ReadAloudState.Paused;

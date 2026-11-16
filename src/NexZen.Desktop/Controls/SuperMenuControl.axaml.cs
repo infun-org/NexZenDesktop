@@ -60,6 +60,7 @@ public partial class SuperMenuControl : UserControl
     public event EventHandler? SitePrivacyRequested;
     public event EventHandler? CreateQrRequested;
     public event EventHandler? CustomCssRequested;
+    public event EventHandler? NexZenVoiceRequested;
     public event EventHandler? AiFunctionRequested;
     public event EventHandler? SearchWithRequested;
     public event EventHandler? LockDomainRequested;
@@ -419,6 +420,9 @@ public partial class SuperMenuControl : UserControl
         var customCss = this.FindControl<Button>("CustomCssButton");
         if (customCss != null)
             customCss.IsVisible = _toolsExpanded;
+        var nexzenVoice = this.FindControl<Button>("NexZenVoiceButton");
+        if (nexzenVoice != null)
+            nexzenVoice.IsVisible = _toolsExpanded;
         var chevron = this.FindControl<PathIcon>("ToolsChevron");
         if (chevron != null)
             chevron.Data = StreamGeometry.Parse(_toolsExpanded ? "M7,14L12,9L17,14Z" : "M7,10L12,15L17,10Z");
@@ -610,6 +614,11 @@ public partial class SuperMenuControl : UserControl
     private void CreateQrButton_Click(object? sender, RoutedEventArgs e)
     {
         CreateQrRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void NexZenVoiceButton_Click(object? sender, RoutedEventArgs e)
+    {
+        NexZenVoiceRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private void CustomCssButton_Click(object? sender, RoutedEventArgs e)

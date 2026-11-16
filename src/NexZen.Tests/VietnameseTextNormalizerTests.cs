@@ -143,12 +143,42 @@ public class VietnameseTextNormalizerTests
     }
 
     [Fact]
+    public void Writes_npy_like_numpy()
+    {
+        var values = Enumerable.Range(0, 192).Select(i => i / 7f - 3f).ToArray();
+        var bytes = NexZen.Infrastructure.Speech.Npy.Float32Vector(values);
+        Assert.Equal(896, bytes.Length); // 128-byte header + 192 floats, like the shipped voices
+        Assert.Equal(0x93, bytes[0]);
+        var header = System.Text.Encoding.ASCII.GetString(bytes, 10, 118);
+        Assert.Contains("'descr': '<f4'", header);
+        Assert.Contains("'shape': (192,)", header);
+        Assert.EndsWith("\n", header);
+        Assert.Equal(values[5], BitConverter.ToSingle(bytes, 128 + 5 * 4));
+    }
+
+    [Theory]
+    [InlineData("Giọng của tôi", "giong-cua-toi")]
+    [InlineData("  Đức Anh  ", "duc-anh")]
+    [InlineData("!!!", "voice")]
+    public void Makes_file_safe_voice_ids(string name, string expected)
+    {
+        Assert.Equal(expected, NexZen.Infrastructure.Speech.ZonosSpeechServer.VoiceId(name));
+    }
+
+    [Fact]
     public void Splits_sentences_and_joins_short_ones()
     {
         var parts = SpeechTextSplitter.Split("Xin chào. Hôm nay là một ngày đẹp trời để đọc tin tức! Bạn đã sẵn sàng chưa?\nBắt đầu nhé.");
         Assert.Equal(
             ["Xin chào. Hôm nay là một ngày đẹp trời để đọc tin tức!", "Bạn đã sẵn sàng chưa? Bắt đầu nhé."],
             parts);
+    }
+
+    [Fact]
+    public void Does_not_split_after_abbreviations()
+    {
+        var parts = SpeechTextSplitter.Split("Mưa lớn ở TP. Hồ Chí Minh từ chiều qua đến sáng nay. Người dân nên hạn chế ra đường.");
+        Assert.Equal(["Mưa lớn ở TP. Hồ Chí Minh từ chiều qua đến sáng nay.", "Người dân nên hạn chế ra đường."], parts);
     }
 
     [Fact]

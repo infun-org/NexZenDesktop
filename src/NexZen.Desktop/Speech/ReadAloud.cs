@@ -13,6 +13,8 @@ namespace NexZen.Desktop.Speech;
 
 public enum ReadAloudState { Idle, OfferDownload, Downloading, Preparing, Speaking, Paused }
 
+public enum ReadAloudSpeed { Slow, Normal, Fast }
+
 /// <summary>
 /// Reads text aloud with the local ZONOS3 voice: Vietnamese text has its numbers, dates and units
 /// spelled out first, then it is cut into sentences that are generated one after another while
@@ -25,8 +27,9 @@ public static class ReadAloud
     private static CancellationTokenSource? _current;
     private static PulseAudioPlayer? _player;
     private static string? _voiceId = LoadVoicePreference();
-    private static (string Text, string? Title)? _pending;
+    private static (string Text, string? Title, object? Origin)? _pending;
     private static CancellationTokenSource? _install;
+    private static ReadAloudSpeed _speed = LoadSpeedPreference();
 
     static ReadAloud()
     {
@@ -34,6 +37,12 @@ public static class ReadAloud
     }
 
     public static event Action? StateChanged;
+
+    /// <summary>A sentence starts playing: its text as written (before numbers were spelled out).</summary>
+    public static event Action<object?, string>? SentenceStarted;
+
+    /// <summary>The window (or other owner) the current reading or download offer belongs to.</summary>
+    public static object? Origin { get; private set; }
 
     public static ReadAloudState State { get; private set; }
     public static string Status { get; private set; } = "";
@@ -47,7 +56,7 @@ public static class ReadAloud
     {
         get
         {
-            var voices = Server.Voices();
+            var voices = Voices;
             return voices.FirstOrDefault(v => v.Id == _voiceId)
                    ?? voices.FirstOrDefault(v => v.Id == "seoyeon")
                    ?? voices.FirstOrDefault();
@@ -59,14 +68,35 @@ public static class ReadAloud
     {
         _voiceId = id;
         SaveVoicePreference(id);
+        StateChanged?.Invoke();
     }
 
-    public static void Speak(string text, string? title = null)
+    public static ReadAloudSpeed Speed
     {
+        get => _speed;
+        set
+        {
+            _speed = value;
+            SavePreference("read-aloud-speed.txt", value.ToString());
+            StateChanged?.Invoke();
+        }
+    }
+
+    /// <summary>The model's speaking-rate condition (UTF-8 bytes per second) for a speed.</summary>
+    private static double? SpeakingRate(ReadAloudSpeed speed) => speed switch
+    {
+        ReadAloudSpeed.Slow => 19,
+        ReadAloudSpeed.Fast => 33,
+        _ => null,
+    };
+
+    public static void Speak(string text, string? title = null, object? origin = null)
+    {
+        Origin = origin;
         if (!Server.IsInstalled)
         {
             // First use: offer the one-time download, then read this text.
-            _pending = (text, title);
+            _pending = (text, title, origin);
             if (State is not ReadAloudState.Downloading)
             {
                 Error = null;
@@ -132,7 +162,7 @@ public static class ReadAloud
                 var pending = _pending;
                 _pending = null;
                 if (pending is { } p && Server.IsInstalled)
-                    Speak(p.Text, p.Title);
+                    Speak(p.Text, p.Title, p.Origin);
                 else
                     Set(ReadAloudState.Idle, "");
             }
@@ -171,8 +201,7 @@ public static class ReadAloud
         {
             var vietnamese = VietnameseTextNormalizer.LooksVietnamese(text);
             var language = vietnamese ? "vi" : "en_us";
-            if (vietnamese)
-                text = VietnameseTextNormalizer.Normalize(text);
+            // Split the text as written, so each sentence can be found on the page while it plays.
             var pieces = SpeechTextSplitter.Split(text);
             if (pieces.Count == 0)
             {
@@ -180,7 +209,8 @@ public static class ReadAloud
                 return;
             }
 
-            var player = PulseAudioPlayer.TryCreate(ZonosSpeechServer.SampleRate, 1, out var err,
+            const int rate = ZonosSpeechServer.SampleRate;
+            var player = PulseAudioPlayer.TryCreate(rate, 1, out var err,
                 streamName: "Read aloud (NexZen)", maxQueuedMs: null)
                 ?? throw new InvalidOperationException("No audio output: " + err);
             lock (Gate)
@@ -194,22 +224,57 @@ public static class ReadAloud
             }
 
             // Sentences come out of the model at different levels; even them out.
-            var leveller = new SpeechLevelNormalizer(ZonosSpeechServer.SampleRate);
+            var leveller = new SpeechLevelNormalizer(rate);
+            long enqueued = 0;
+            var starts = new List<(long Sample, string Text)>();
+            var origin = Origin;
+            var announced = 0;
+            void Announce()
+            {
+                // Played so far = everything queued minus what is still waiting.
+                var played = Interlocked.Read(ref enqueued) - player.QueuedSamples;
+                List<string>? due = null;
+                lock (starts)
+                {
+                    while (announced < starts.Count && starts[announced].Sample <= played)
+                        (due ??= []).Add(starts[announced++].Text);
+                }
+                if (due != null && !token.IsCancellationRequested)
+                    foreach (var t in due)
+                        SentenceStarted?.Invoke(origin, t);
+            }
+            using var ticker = new Timer(_ => Announce(), null, 100, 100);
             for (var i = 0; i < pieces.Count; i++)
             {
                 token.ThrowIfCancellationRequested();
                 var voice = Voice ?? throw new InvalidOperationException("No voice installed");
                 var label = $"Reading {i + 1}/{pieces.Count}";
+                lock (starts)
+                    starts.Add((Interlocked.Read(ref enqueued), pieces[i]));
+                var spoken = vietnamese ? VietnameseTextNormalizer.Normalize(pieces[i]) : pieces[i];
                 void Play(float[] samples, int count)
                 {
                     if (token.IsCancellationRequested) return;
                     player.Enqueue(samples, count);
+                    Interlocked.Add(ref enqueued, count);
                     if (State == ReadAloudState.Preparing)
                         Set(ReadAloudState.Speaking, label);
                 }
                 leveller.BeginSentence();
-                await Server.SpeakAsync(pieces[i], language, voice, normalizeText: !vietnamese,
-                    (samples, count) => leveller.Push(samples, count, Play), token).ConfigureAwait(false);
+                // A server that stops answering ends the reading with a message instead of hanging.
+                using (var limit = CancellationTokenSource.CreateLinkedTokenSource(token))
+                {
+                    limit.CancelAfter(TimeSpan.FromSeconds(90));
+                    try
+                    {
+                        await SpeakPieceAsync(spoken, vietnamese, voice,
+                            (samples, count) => leveller.Push(samples, count, Play), limit.Token).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException) when (!token.IsCancellationRequested)
+                    {
+                        throw new TimeoutException("The voice did not answer for 90 seconds.");
+                    }
+                }
                 token.ThrowIfCancellationRequested();
                 leveller.EndSentence(Play);
                 if (State != ReadAloudState.Paused)
@@ -282,25 +347,91 @@ public static class ReadAloud
         StateChanged?.Invoke();
     }
 
-    private static string PreferencePath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NexZenDesktop", "read-aloud-voice.txt");
+    private static string PreferencePath(string file) => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NexZenDesktop", file);
 
-    private static string? LoadVoicePreference()
+    private static string? LoadPreference(string file)
     {
-        try { return File.Exists(PreferencePath) ? File.ReadAllText(PreferencePath).Trim() : null; }
+        try { return File.Exists(PreferencePath(file)) ? File.ReadAllText(PreferencePath(file)).Trim() : null; }
         catch { return null; }
     }
 
-    private static void SaveVoicePreference(string id)
+    private static void SavePreference(string file, string value)
     {
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(PreferencePath)!);
-            File.WriteAllText(PreferencePath, id);
+            Directory.CreateDirectory(Path.GetDirectoryName(PreferencePath(file))!);
+            File.WriteAllText(PreferencePath(file), value);
         }
         catch
         {
             // Not remembered.
         }
+    }
+
+    private static string? LoadVoicePreference() => LoadPreference("read-aloud-voice.txt");
+
+    private static void SaveVoicePreference(string id) => SavePreference("read-aloud-voice.txt", id);
+
+    private static ReadAloudSpeed LoadSpeedPreference() =>
+        Enum.TryParse<ReadAloudSpeed>(LoadPreference("read-aloud-speed.txt"), out var s) ? s : ReadAloudSpeed.Normal;
+
+    /// <summary>Speaks <paramref name="text"/> into a 16-bit WAV file (same voice, speed and levelling as reading aloud).</summary>
+    public static async Task SaveToWavAsync(string text, string path, IProgress<double>? progress, CancellationToken cancellationToken)
+    {
+        var voice = Voice ?? throw new InvalidOperationException("No voice installed");
+        var vietnamese = VietnameseTextNormalizer.LooksVietnamese(text);
+        var pieces = SpeechTextSplitter.Split(text);
+        const int rate = ZonosSpeechServer.SampleRate;
+        var leveller = new SpeechLevelNormalizer(rate);
+        var audio = new List<float>();
+        var pause = new float[rate / 5]; // 0.2 s between sentences
+        for (var i = 0; i < pieces.Count; i++)
+        {
+            progress?.Report((double)i / pieces.Count);
+            var spoken = vietnamese ? VietnameseTextNormalizer.Normalize(pieces[i]) : pieces[i];
+            leveller.BeginSentence();
+            void Keep(float[] s, int n) { for (var k = 0; k < n; k++) audio.Add(s[k]); }
+            await SpeakPieceAsync(spoken, vietnamese, voice, (s, n) => leveller.Push(s, n, Keep), cancellationToken)
+                .ConfigureAwait(false);
+            leveller.EndSentence(Keep);
+            audio.AddRange(pause);
+        }
+        var samples = audio.ToArray();
+        await File.WriteAllBytesAsync(path, WavFile.Pcm16(samples, samples.Length, rate),
+            cancellationToken).ConfigureAwait(false);
+        progress?.Report(1);
+    }
+
+    public static bool CanMakeVoices => File.Exists(Server.EncoderPath);
+
+    /// <summary>Fetches the speaker encoder (about 45 MB) used to make voices from recordings.</summary>
+    public static async Task InstallVoiceMakerAsync(IProgress<double>? progress, CancellationToken cancellationToken)
+    {
+        using var installer = new SpeechInstaller(Server.Directory);
+        await installer.InstallEncoderAsync(new Progress<SpeechInstallProgress>(p =>
+            progress?.Report(p.Total <= 0 ? 0 : (double)p.Done / p.Total)), cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Makes a voice from a recording (any audio format ffmpeg reads) and selects it.</summary>
+    public static async Task<SpeechVoice> MakeVoiceAsync(string name, byte[] audio, string fileName, CancellationToken cancellationToken)
+    {
+        var embedding = await Server.CreateVoiceEmbeddingAsync(audio, fileName, cancellationToken).ConfigureAwait(false);
+        var voice = Server.SaveVoice(name, embedding);
+        SetVoice(voice.Id);
+        return voice;
+    }
+
+    private static Task SpeakPieceAsync(string text, bool vietnamese, SpeechVoice voice,
+        Action<float[], int> onSamples, CancellationToken cancellationToken) =>
+        Server.SpeakAsync(text, vietnamese ? "vi" : "en_us", voice, !vietnamese, onSamples, cancellationToken,
+            SpeakingRate(_speed));
+
+    public static void DeleteVoice(string id)
+    {
+        Server.DeleteVoice(id);
+        if (_voiceId == id)
+            SetVoice("seoyeon");
+        StateChanged?.Invoke();
     }
 }

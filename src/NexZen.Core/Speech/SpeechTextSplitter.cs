@@ -12,7 +12,10 @@ public static class SpeechTextSplitter
     public const int DefaultMaxChars = 240;
     private const int MinChars = 30;
 
-    private static readonly Regex SentenceEnd = new(@"(?<=[.!?…;])\s+|\s*\n+\s*", RegexOptions.Compiled);
+    // Not after abbreviations that end in a period ("TP. Hồ Chí Minh", "PGS. Lê", "Q. 1").
+    private static readonly Regex SentenceEnd = new(
+        @"(?<=[.!?…;])(?<!\b(?:TP|Tp|Q|P|TS|ThS|GS|PGS|BS|Th|St|Mr|Mrs|Ms|Dr|Prof|No|vs|v\.v)\.)\s+|\s*\n+\s*",
+        RegexOptions.Compiled);
     private static readonly Regex ClauseEnd = new(@"(?<=[,:–—])\s+", RegexOptions.Compiled);
     private static readonly Regex Whitespace = new(@"[ \t ]+", RegexOptions.Compiled);
 

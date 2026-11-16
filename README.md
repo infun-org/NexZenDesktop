@@ -79,6 +79,8 @@ and browse with GPU-smooth rendering and privacy tools built in.
   ([ZONOS3-Mini](https://huggingface.co/Zyphra/ZONOS3-Mini), on this computer, no cloud). Vietnamese numbers, dates,
   money, units and common abbreviations are spelled out, and every sentence is levelled to the same loudness.
   The voice (about 1.1 GB) is downloaded on first use.
+- **NexZen Voice** (SuperMenu → Tools): read any text, save it as WAV, pick the speed, and make a voice from
+  your own recording.
 - Careful **keyboard/IME** handling for Vietnamese typing in web pages (fcitx5), numpad that follows NumLock.
 
 <p align="center"><img src="docs/screenshots/pinned-windows.webp" alt="Two pinned mini browsers floating over a page"></p>

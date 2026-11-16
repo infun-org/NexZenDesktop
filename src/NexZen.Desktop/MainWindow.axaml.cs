@@ -700,8 +700,13 @@ public partial class MainWindow : Window
         _superMenuControl.OpenOnPinnedWindowRequested += (_, _) => OpenOnPinnedWindowFromMenu();
         _superMenuControl.MuteTabRequested += (_, _) => ToggleMuteActiveTab();
         _superMenuControl.ReadAloudRequested += (_, _) => _ = ReadAloudFromMenuAsync();
-        if (this.FindControl<Grid>("MainGrid") is { } readAloudGrid)
-            readAloudGrid.Children.Add(new Speech.ReadAloudBar());
+        _superMenuControl.NexZenVoiceRequested += (_, _) =>
+        {
+            var selection = _copyContext is { IsImage: false } c ? c.SelectionText : null;
+            CloseSuperMenu();
+            Speech.VoiceWindow.Open(this, selection);
+        };
+        MountReadAloudBar();
         _superMenuControl.InspectRequested += (_, _) =>
         {
             var copy = _copyContext;
@@ -4601,6 +4606,80 @@ public partial class MainWindow : Window
             : "Read page aloud");
     }
 
+    /// <summary>
+    /// The read-aloud bar floats at the bottom of the page in a popup (the page's bitmap covers
+    /// controls placed inside the page host), and the sentence being read is highlighted on the page.
+    /// </summary>
+    private void MountReadAloudBar()
+    {
+        if (this.FindControl<Grid>("MainGrid") is not { } grid)
+            return;
+        var anchor = new Control
+        {
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Bottom,
+            Width = 0,
+            Height = 0,
+            Margin = new Thickness(0, 0, 0, 24),
+            IsHitTestVisible = false,
+        };
+        var bar = new Speech.ReadAloudBar(this);
+        var popup = new Avalonia.Controls.Primitives.Popup
+        {
+            PlacementTarget = anchor,
+            Placement = Avalonia.Controls.PlacementMode.Top,
+            IsLightDismissEnabled = false,
+            Child = bar,
+        };
+        grid.Children.Add(anchor);
+        grid.Children.Add(popup);
+        bar.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == IsVisibleProperty)
+                popup.IsOpen = bar.IsVisible && IsVisible;
+        };
+        AvaloniaCefBrowser? highlighted = null;
+        void OnSentence(object? origin, string sentence)
+        {
+            if (!ReferenceEquals(origin, this))
+                return;
+            Dispatcher.UIThread.Post(() =>
+            {
+                var browser = GetActiveTabState()?.Browser;
+                var snippet = HighlightSnippet(sentence);
+                if (browser == null || snippet.Length < 4)
+                    return;
+                highlighted = browser;
+                browser.GetBrowserHost()?.Find(snippet, true, false, false);
+            });
+        }
+        void OnState()
+        {
+            if (Speech.ReadAloud.State != Speech.ReadAloudState.Idle || highlighted == null)
+                return;
+            var browser = highlighted;
+            highlighted = null;
+            Dispatcher.UIThread.Post(() => browser.GetBrowserHost()?.StopFinding(true));
+        }
+        Speech.ReadAloud.SentenceStarted += OnSentence;
+        Speech.ReadAloud.StateChanged += OnState;
+        Closed += (_, _) =>
+        {
+            Speech.ReadAloud.SentenceStarted -= OnSentence;
+            Speech.ReadAloud.StateChanged -= OnState;
+            if (ReferenceEquals(Speech.ReadAloud.Origin, this))
+                Speech.ReadAloud.Stop();
+        };
+    }
+
+    /// <summary>The first words of a sentence, enough to find it on the page (find stops at line breaks).</summary>
+    private static string HighlightSnippet(string sentence)
+    {
+        var words = sentence.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var snippet = string.Join(' ', words.Take(8));
+        return snippet.TrimEnd('.', ',', ';', ':', '!', '?', '…', '"', '\'', ')');
+    }
+
     /// <summary>SuperMenu "Read aloud": the selection if there is one, else the page's main text.</summary>
     private async Task ReadAloudFromMenuAsync()
     {
@@ -4615,7 +4694,7 @@ public partial class MainWindow : Window
         var selection = copy is { IsImage: false } ? copy.SelectionText?.Trim() : null;
         if (!string.IsNullOrWhiteSpace(selection))
         {
-            Speech.ReadAloud.Speak(selection);
+            Speech.ReadAloud.Speak(selection, null, this);
             return;
         }
         var tabId = _viewModel?.ActiveTab?.Id;
@@ -4626,7 +4705,7 @@ public partial class MainWindow : Window
             ShowCopyNotification("Read aloud", "Couldn't find text to read on this page.", null, NotificationType.Information);
             return;
         }
-        Speech.ReadAloud.Speak(text, _viewModel?.ActiveTab?.Title);
+        Speech.ReadAloud.Speak(text, _viewModel?.ActiveTab?.Title, this);
     }
 
     private async Task CopyImageAddressFromMenuAsync()
