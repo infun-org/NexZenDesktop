@@ -4,6 +4,8 @@ A desktop browser built on **Chromium (CEF 152)** and **Avalonia / .NET 8** that
 mirror and control your Android phone next to the page you are reading, move links and files between devices,
 and browse with GPU-smooth rendering and privacy tools built in.
 
+<p align="center"><img src="docs/screenshots/mirror.webp" alt="NexZen Desktop with NexZen Mirror docked beside the page"></p>
+
 > Linux (x64) is the primary target today. It pairs with **[NexZen Browser for Android](https://play.google.com/store/apps/details?id=com.infun.nexzenbrowser)** for NexShare and NexZen Mirror.
 
 ---
@@ -18,6 +20,8 @@ and browse with GPU-smooth rendering and privacy tools built in.
 - It adapts to what you clicked: **Copy / Cut / Paste**, **Open in new tab / new window / pinned window / another
   device**, **Save image**, **Copy image address**, **Create QR**.
 - Works even on pages that block the context menu: **Shift + right-click** or a **double right-click** always opens it.
+
+<p align="center"><img src="docs/screenshots/supermenu.webp" alt="SuperMenu opened under the cursor" width="360"></p>
 
 ### 📱 NexZen Mirror — your phone on the PC
 - **See and control** the connected Android phone: click, swipe and long-press with the mouse, scroll with the wheel,
@@ -35,6 +39,12 @@ and browse with GPU-smooth rendering and privacy tools built in.
 - Discovery over **Bluetooth LE** and the **LAN**, pairing with ECDH and a short authentication string, then transfer over
   **Wi-Fi Direct** or the local network.
 - Send **links, text and files** in both directions; open the page you are reading on another device.
+- **Open in Another device** from the SuperMenu: the phone asks before opening the link (Accept / Always allow / Dismiss).
+
+<p align="center">
+  <img src="docs/screenshots/open-on-phone.webp" alt="Open the current page on the phone from the SuperMenu" width="420">
+  <img src="docs/screenshots/nexshare.webp" alt="NexShare window: discovered devices, messages and files" width="520">
+</p>
 
 ### ⚡ Fast and smooth
 - **GPU page painting**: frames are shared from Chromium as dmabuf textures and drawn through EGL — full-screen WebGL /
@@ -55,13 +65,21 @@ and browse with GPU-smooth rendering and privacy tools built in.
 - Add the current tab to a workspace, open a single tab from it, edit or delete it from the Workspaces window;
   workspaces are stored locally and shared by all NexZen windows.
 
+<p align="center"><img src="docs/screenshots/workspaces.webp" alt="Workspaces window" width="640"></p>
+
 ### 🧰 Everyday browsing
 - **New tab page** with a centred address bar, shortcuts with site icons, and your own background picture.
+- **Pinned windows**: open any link in a small floating browser that stays on top of the page, with its own
+  back / forward / reload, so a chat, a reference page or a video stays in view while you browse.
 - **Per-site Custom CSS**: restyle any site with your own CSS (syntax-highlighted editor, applied on every visit).
 - **Tab switcher** (Ctrl+Tab), **Print** with page setup and live preview, built-in **DevTools** (F12),
   **Chrome extensions**, device-size **page views**.
 - **AI Function**: an assistant that can read the current page, with support for local models.
 - Careful **keyboard/IME** handling for Vietnamese typing in web pages (fcitx5), numpad that follows NumLock.
+
+<p align="center"><img src="docs/screenshots/pinned-windows.webp" alt="Two pinned mini browsers floating over a page"></p>
+<p align="center"><img src="docs/screenshots/ai-function.webp" alt="AI Function answering questions about the current page with a local model"></p>
+<p align="center"><img src="docs/screenshots/custom-css.webp" alt="Per-site Custom CSS editor" width="360"></p>
 
 ---
 
