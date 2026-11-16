@@ -699,6 +699,9 @@ public partial class MainWindow : Window
         _superMenuControl.NewIncognitoWindowRequested += (_, _) => OpenIncognitoWindow();
         _superMenuControl.OpenOnPinnedWindowRequested += (_, _) => OpenOnPinnedWindowFromMenu();
         _superMenuControl.MuteTabRequested += (_, _) => ToggleMuteActiveTab();
+        _superMenuControl.ReadAloudRequested += (_, _) => _ = ReadAloudFromMenuAsync();
+        if (this.FindControl<Grid>("MainGrid") is { } readAloudGrid)
+            readAloudGrid.Children.Add(new Speech.ReadAloudBar());
         _superMenuControl.InspectRequested += (_, _) =>
         {
             var copy = _copyContext;
@@ -3496,6 +3499,7 @@ public partial class MainWindow : Window
             _superMenuControl.SetOpenInNewWindowVisible(CanOpenInNewWindow(copy));
             _superMenuControl.SetOpenOnPinnedWindowVisible(true);
             _superMenuControl.SetMuteTabLabel(GetActiveTabState()?.AudioMuted == true);
+            UpdateReadAloudLabel(copy);
             _superMenuControl.SetSearchAvailable(copy.IsImage || !string.IsNullOrWhiteSpace(copy.SelectionText));
             var currentUrl = GetCurrentPageAddress();
             _superMenuControl.SetDomainLockedState(App.ServiceProvider?.GetService<DomainLockStore>()?.IsLocked(currentUrl) == true);
@@ -4584,7 +4588,50 @@ public partial class MainWindow : Window
                 return;
             copy.SelectionText = text.Trim();
             _superMenuControl.SetSearchAvailable(!string.IsNullOrWhiteSpace(copy.SelectionText));
+            UpdateReadAloudLabel(copy);
         });
+    }
+
+    private void UpdateReadAloudLabel(PageCopyContext copy)
+    {
+        _superMenuControl.SetReadAloudLabel(
+            Speech.ReadAloud.State != Speech.ReadAloudState.Idle ? "Stop reading aloud"
+            : !copy.IsImage && !string.IsNullOrWhiteSpace(copy.SelectionText) ? "Read selection aloud"
+            : "Read page aloud");
+    }
+
+    /// <summary>SuperMenu "Read aloud": the selection if there is one, else the page's main text.</summary>
+    private async Task ReadAloudFromMenuAsync()
+    {
+        var copy = _copyContext;
+        CloseSuperMenu();
+        if (Speech.ReadAloud.State != Speech.ReadAloudState.Idle)
+        {
+            Speech.ReadAloud.Stop();
+            return;
+        }
+        if (!Speech.ReadAloud.IsInstalled)
+        {
+            ShowCopyNotification("Read aloud",
+                "The NexZen voice is not installed yet (" + Speech.ReadAloud.SpeechDirectory + ").",
+                null, NotificationType.Warning);
+            return;
+        }
+        var selection = copy is { IsImage: false } ? copy.SelectionText?.Trim() : null;
+        if (!string.IsNullOrWhiteSpace(selection))
+        {
+            Speech.ReadAloud.Speak(selection);
+            return;
+        }
+        var tabId = _viewModel?.ActiveTab?.Id;
+        var json = tabId == null ? null : await TryExtractPageJsonAsync(tabId);
+        var text = json == null ? "" : Speech.ReadAloud.TextFromPageJson(json, out var title);
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            ShowCopyNotification("Read aloud", "Couldn't find text to read on this page.", null, NotificationType.Information);
+            return;
+        }
+        Speech.ReadAloud.Speak(text, _viewModel?.ActiveTab?.Title);
     }
 
     private async Task CopyImageAddressFromMenuAsync()

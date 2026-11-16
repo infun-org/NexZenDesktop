@@ -54,6 +54,7 @@ public partial class SuperMenuControl : UserControl
     public event EventHandler? NewIncognitoWindowRequested;
     public event EventHandler? OpenOnPinnedWindowRequested;
     public event EventHandler? MuteTabRequested;
+    public event EventHandler? ReadAloudRequested;
     public event EventHandler? InspectRequested;
     public event EventHandler? PageViewRequested;
     public event EventHandler? SitePrivacyRequested;
@@ -583,6 +584,17 @@ public partial class SuperMenuControl : UserControl
     private void MuteTab_Click(object? sender, RoutedEventArgs e)
     {
         MuteTabRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void ReadAloud_Click(object? sender, RoutedEventArgs e)
+    {
+        ReadAloudRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void SetReadAloudLabel(string text)
+    {
+        if (this.FindControl<TextBlock>("ReadAloudLabel") is { } label)
+            label.Text = text;
     }
 
     private void InspectButton_Click(object? sender, RoutedEventArgs e)

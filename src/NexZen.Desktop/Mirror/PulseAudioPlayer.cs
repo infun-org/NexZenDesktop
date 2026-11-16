@@ -7,8 +7,9 @@ namespace NexZen.Desktop.Mirror;
 
 /// <summary>
 /// Plays float32 interleaved samples through PulseAudio (PipeWire's pulse server on most Linux
-/// desktops) with libpulse-simple. Keeps the delay low: the server buffer targets ~60 ms, and when
-/// more than ~200 ms is waiting, the oldest audio is dropped so it never falls behind the picture.
+/// desktops) with libpulse-simple. For NexZen Mirror it keeps the delay low: the server buffer
+/// targets ~60 ms, and when more than ~200 ms is waiting, the oldest audio is dropped so it never
+/// falls behind the picture. Read aloud keeps every sample instead (no queue limit) and can pause.
 /// </summary>
 internal sealed unsafe class PulseAudioPlayer : IDisposable
 {
@@ -35,22 +36,44 @@ internal sealed unsafe class PulseAudioPlayer : IDisposable
     private readonly BlockingCollection<float[]> _queue = new(new ConcurrentQueue<float[]>());
     private readonly Thread _thread;
     private readonly int _rate, _channels;
+    private readonly int? _maxQueuedMs;
+    private readonly ManualResetEventSlim _playing = new(true);
     private long _queuedSamples;
     private volatile bool _muted;
     private int _disposed;
 
     public bool Muted { get => _muted; set => _muted = value; }
 
-    private PulseAudioPlayer(IntPtr pa, int rate, int channels)
+    /// <summary>Holds the queued audio (nothing is dropped meanwhile) until set back to false.</summary>
+    public bool Paused
+    {
+        get => !_playing.IsSet;
+        set
+        {
+            if (value) _playing.Reset();
+            else _playing.Set();
+        }
+    }
+
+    /// <summary>Samples queued and not yet handed to PulseAudio.</summary>
+    public long QueuedSamples => Interlocked.Read(ref _queuedSamples);
+
+    public int Rate => _rate;
+
+    private PulseAudioPlayer(IntPtr pa, int rate, int channels, int? maxQueuedMs)
     {
         _pa = pa;
         _rate = rate;
         _channels = channels;
-        _thread = new Thread(Run) { IsBackground = true, Name = "NexZenMirrorAudioOut" };
+        _maxQueuedMs = maxQueuedMs;
+        _thread = new Thread(Run) { IsBackground = true, Name = "NexZenAudioOut" };
         _thread.Start();
     }
 
-    public static PulseAudioPlayer? TryCreate(int rate, int channels, out string? error)
+    /// <param name="streamName">Name shown in the system mixer.</param>
+    /// <param name="maxQueuedMs">Oldest audio beyond this is dropped (live audio); null keeps everything.</param>
+    public static PulseAudioPlayer? TryCreate(int rate, int channels, out string? error,
+        string streamName = "Phone audio (NexZen Mirror)", int? maxQueuedMs = 200)
     {
         error = null;
         if (PaNew == null || PaWrite == null)
@@ -69,7 +92,7 @@ internal sealed unsafe class PulseAudioPlayer : IDisposable
             FragSize = uint.MaxValue,
         };
         var name = Marshal.StringToCoTaskMemUTF8("NexZen");
-        var stream = Marshal.StringToCoTaskMemUTF8("Phone audio (NexZen Mirror)");
+        var stream = Marshal.StringToCoTaskMemUTF8(streamName);
         try
         {
             int err;
@@ -79,7 +102,7 @@ internal sealed unsafe class PulseAudioPlayer : IDisposable
                 error = "pa_simple_new failed (" + err + ")";
                 return null;
             }
-            return new PulseAudioPlayer(pa, rate, channels);
+            return new PulseAudioPlayer(pa, rate, channels, maxQueuedMs);
         }
         finally
         {
@@ -88,7 +111,7 @@ internal sealed unsafe class PulseAudioPlayer : IDisposable
         }
     }
 
-    /// <summary>Queues samples (copied). Drops the oldest audio when more than ~200 ms is waiting.</summary>
+    /// <summary>Queues samples (copied). With a queue limit, drops the oldest audio beyond it.</summary>
     public void Enqueue(float[] samples, int count)
     {
         if (Volatile.Read(ref _disposed) != 0 || count <= 0) return;
@@ -96,9 +119,17 @@ internal sealed unsafe class PulseAudioPlayer : IDisposable
         Array.Copy(samples, copy, count);
         _queue.Add(copy);
         var queued = Interlocked.Add(ref _queuedSamples, count);
-        var limit = _rate * _channels / 5; // 200 ms
+        if (_maxQueuedMs is not { } ms) return;
+        var limit = (long)_rate * _channels * ms / 1000;
         while (queued > limit && _queue.TryTake(out var old))
             queued = Interlocked.Add(ref _queuedSamples, -old.Length);
+    }
+
+    /// <summary>Drops everything still queued (the ~60 ms PulseAudio holds plays out).</summary>
+    public void Clear()
+    {
+        while (_queue.TryTake(out var old))
+            Interlocked.Add(ref _queuedSamples, -old.Length);
     }
 
     private void Run()
@@ -107,6 +138,8 @@ internal sealed unsafe class PulseAudioPlayer : IDisposable
         {
             foreach (var block in _queue.GetConsumingEnumerable())
             {
+                _playing.Wait();
+                if (Volatile.Read(ref _disposed) != 0) return;
                 Interlocked.Add(ref _queuedSamples, -block.Length);
                 if (_muted) Array.Clear(block);
                 int err;
@@ -121,6 +154,7 @@ internal sealed unsafe class PulseAudioPlayer : IDisposable
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
         _queue.CompleteAdding();
+        _playing.Set();
         _thread.Join(500);
         int err;
         if (PaFlush != null) PaFlush(_pa, &err);
