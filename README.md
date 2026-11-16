@@ -74,7 +74,7 @@ and browse with GPU-smooth rendering and privacy tools built in.
 | **Linux x64** — AppImage | `NexZen-<version>-x86_64.AppImage` from [GitHub Releases](https://github.com/infun-org/NexZenDesktop/releases/latest): `chmod +x` and run |
 | **Debian / Ubuntu** (Ubuntu 22.04+, Debian 12+) | `nexzen-desktop_<version>_amd64.deb` from [GitHub Releases](https://github.com/infun-org/NexZenDesktop/releases/latest): `sudo apt install ./nexzen-desktop_*_amd64.deb` |
 | **Fedora / openSUSE** | `nexzen-desktop-<version>-1.x86_64.rpm` from [GitHub Releases](https://github.com/infun-org/NexZenDesktop/releases/latest): `sudo dnf install ./nexzen-desktop-*.x86_64.rpm` |
-| **Arch Linux / CachyOS / Manjaro** | AUR: `yay -S nexzen-desktop-bin` |
+| **Arch Linux / CachyOS / Manjaro** | AUR package coming soon (AUR sign-ups are currently closed). Meanwhile use the AppImage / tarball, or build [`packaging/aur/PKGBUILD`](packaging/aur/PKGBUILD) with `makepkg -si` |
 | **Flatpak** | `NexZen-<version>-x86_64.flatpak` from [GitHub Releases](https://github.com/infun-org/NexZenDesktop/releases/latest): `flatpak install --user ./NexZen-*.flatpak` (mirroring over USB is not available inside the Flatpak sandbox; Wi-Fi works) |
 | **Android** (phone companion) | [NexZen Browser on Google Play](https://play.google.com/store/apps/details?id=com.infun.nexzenbrowser) |
 | Windows, macOS | not supported yet |
