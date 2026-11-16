@@ -123,6 +123,8 @@ jobs:
   flatpak:
     needs: linux
     runs-on: ubuntu-24.04
+    # A Flatpak problem must not hold back the other packages.
+    continue-on-error: true
     container:
       image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08
       options: --privileged
@@ -161,8 +163,9 @@ jobs:
           path: NexZen-${{ steps.v.outputs.version }}-x86_64.flatpak
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: always() && needs.linux.result == 'success' && startsWith(github.ref, 'refs/tags/v')
     needs: [linux, flatpak]
+    # Runs when linux succeeded, whatever happened to the Flatpak build.
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/download-artifact@v4
@@ -176,7 +179,11 @@ jobs:
         run: |
           v="${GITHUB_REF_NAME#v}"
           cd dist
-          sha256sum "NexZen-$v-x86_64.flatpak" >> SHA256SUMS
+          files=(nexzen-desktop-*.tar.gz *.deb *.rpm *.AppImage)
+          if [ -f "NexZen-$v-x86_64.flatpak" ]; then
+            sha256sum "NexZen-$v-x86_64.flatpak" >> SHA256SUMS
+            files+=("NexZen-$v-x86_64.flatpak")
+          fi
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
             --title "NexZen Desktop $v" --generate-notes --draft \
-            nexzen-desktop-*.tar.gz *.deb *.rpm *.AppImage *.flatpak SHA256SUMS
+            "${files[@]}" SHA256SUMS
