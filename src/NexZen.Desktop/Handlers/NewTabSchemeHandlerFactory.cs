@@ -32,6 +32,15 @@ internal sealed class NewTabSchemeHandlerFactory : CefSchemeHandlerFactory
                 rel += "index.html";
         }
 
+        // The background picture the user chose for the new-tab page (NewTabBackground).
+        if (rel.Equals("background", StringComparison.OrdinalIgnoreCase))
+        {
+            var picture = NexZen.Desktop.Helpers.NewTabBackground.CurrentFile;
+            if (picture == null)
+                return new DefaultResourceHandler { Status = 404, StatusText = "Not Found", MimeType = "text/plain", Response = new MemoryStream() };
+            return new DefaultResourceHandler { MimeType = Mime(picture), Response = File.OpenRead(picture) };
+        }
+
         var stateName = Path.GetFileName(rel);
         if (stateName.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
             && (stateName.StartsWith("placement", StringComparison.OrdinalIgnoreCase)
@@ -76,6 +85,8 @@ internal sealed class NewTabSchemeHandlerFactory : CefSchemeHandlerFactory
             ".png" => "image/png",
             ".jpg" or ".jpeg" => "image/jpeg",
             ".webp" => "image/webp",
+            ".gif" => "image/gif",
+            ".bmp" => "image/bmp",
             ".svg" => "image/svg+xml",
             ".wasm" => "application/wasm",
             _ => "application/octet-stream"

@@ -18,6 +18,9 @@
             <Setter Property="Foreground" Value="#FFC107" />
             <Setter Property="Data" Value="M12,17.27L18.18,21L16.54,13.97L22,9.24L14.81,8.62L12,2L9.19,8.63L2,9.24L7.46,13.97L5.82,21L12,17.27Z" />
         </Style>
+        <Style Selector="Button.QuickLink:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#EEF1F4" />
+        </Style>
         <Style Selector="Button.Suggestion">
             <Setter Property="HorizontalAlignment" Value="Stretch" />
             <Setter Property="HorizontalContentAlignment" Value="Left" />
@@ -106,6 +109,12 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+        </Border>
+
+        <!-- Shortcuts to often-used sites (QuickLinkStore), filled in code. -->
+        <!-- Light backing so names stay readable over a background picture. -->
+        <Border HorizontalAlignment="Center" Margin="0,28,0,0" Padding="6" CornerRadius="16" Background="#CCFFFFFF">
+            <WrapPanel Name="QuickLinksPanel" HorizontalAlignment="Center" ItemWidth="80" ItemHeight="88" />
         </Border>
     </StackPanel>
 </UserControl>

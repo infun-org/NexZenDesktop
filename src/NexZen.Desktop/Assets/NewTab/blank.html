@@ -3,10 +3,19 @@
 <head>
 <meta charset="utf-8">
 <title>New Tab</title>
-<!-- New tab page: intentionally empty. The address bar is drawn by the app on top of it. -->
+<!-- New tab page: empty, with the user's background picture if one is set. The address bar and
+     shortcuts are drawn by the app on top of it. -->
 <style>
   html, body { margin: 0; height: 100%; background: #ffffff; }
+  body { background-position: center; background-size: cover; background-repeat: no-repeat; }
 </style>
 </head>
-<body></body>
+<body>
+<script>
+  // Cache-busting: the picture changes under the same address.
+  const img = new Image();
+  img.onload = () => { document.body.style.backgroundImage = "url('" + img.src + "')"; };
+  img.src = "background?t=" + Date.now();
+</script>
+</body>
 </html>

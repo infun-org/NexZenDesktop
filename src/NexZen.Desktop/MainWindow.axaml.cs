@@ -82,6 +82,8 @@ public partial class MainWindow : Window
             return;
         var url = _viewModel?.ActiveTab?.Url;
         var show = _viewModel?.ActiveTab != null && BlankPage.IsBlank(url) && !_browsersParked;
+        if (this.FindControl<Button>("BlankBackgroundButton") is { } backgroundButton)
+            backgroundButton.IsVisible = show;
         if (bar.IsVisible == show)
             return;
         bar.IsVisible = show;
@@ -90,6 +92,40 @@ public partial class MainWindow : Window
         else
             bar.HideSuggestions();
     }
+
+    private async void ChooseNewTabBackground_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        var files = await StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
+        {
+            Title = "Choose a background picture",
+            AllowMultiple = false,
+            FileTypeFilter = new[]
+            {
+                new Avalonia.Platform.Storage.FilePickerFileType("Pictures")
+                {
+                    Patterns = new[] { "*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.bmp" },
+                    MimeTypes = new[] { "image/*" },
+                },
+            },
+        });
+        var path = files.Count > 0 ? files[0].TryGetLocalPath() : null;
+        if (path == null)
+            return;
+        var error = NewTabBackground.Set(path);
+        if (error != null)
+            ShowNotification("Background", error, NotificationType.Error);
+    }
+
+    private void RemoveNewTabBackground_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+        => NewTabBackground.Remove();
+
+    /// <summary>The new-tab picture changed (in any window): reload the blank tabs of this window.</summary>
+    private void OnNewTabBackgroundChanged(object? sender, EventArgs e) => Dispatcher.UIThread.Post(() =>
+    {
+        foreach (var state in _tabs.Values)
+            if (state.Browser is { } b && BlankPage.IsBlank(b.Address))
+                b.Reload();
+    });
 
     private static NexZen.Application.Services.CustomStyleStore? CustomStyles
         => App.ServiceProvider?.GetService<NexZen.Application.Services.CustomStyleStore>();
@@ -139,6 +175,97 @@ public partial class MainWindow : Window
            && window.IsVisible && window._viewModel != null
             ? window._viewModel
             : fallback;
+
+    /// <summary>The browser window to dock NexZen Mirror into: the last focused one, else the main window.</summary>
+    internal static MainWindow? LastBrowserWindow()
+    {
+        if (LastActiveBrowserWindow != null && LastActiveBrowserWindow.TryGetTarget(out var window) && window.IsVisible)
+            return window;
+        return (Avalonia.Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)
+            ?.MainWindow as MainWindow;
+    }
+
+    // ---- NexZen Mirror beside the web page ------------------------------------------------------
+
+    private sealed class DockedMirrorHost : NexZen.Desktop.Mirror.IMirrorHost
+    {
+        private readonly MainWindow _w;
+        public DockedMirrorHost(MainWindow w) => _w = w;
+        public bool IsDocked => true;
+        public void SetTitle(string title) { }
+        public void FitVideo(int width, int height) => _w.FitDockedMirror(width, height);
+        public void CloseMirror() => _w.UndockMirror(keepRunning: false);
+        public void ToggleDock() => _w.UndockMirror(keepRunning: true);
+    }
+
+    private NexZen.Desktop.Mirror.MirrorView? _dockedMirror;
+    private Border? _dockedMirrorPanel;
+    private GridSplitter? _dockedMirrorSplitter;
+
+    /// <summary>
+    /// Shows a running mirror session in a column on the right: the page on the left, a splitter, the
+    /// phone on the right. Every other child of MainGrid stays in the page column.
+    /// </summary>
+    internal void DockMirror(NexZen.Desktop.Mirror.MirrorView view)
+    {
+        if (_dockedMirror != null)
+            UndockMirror(keepRunning: true); // one docked mirror per window; the old one gets its own window
+        if (this.FindControl<Grid>("MainGrid") is not { } grid)
+            return;
+        _dockedMirror = view;
+        view.Host = new DockedMirrorHost(this);
+        _dockedMirrorPanel = new Border { Background = Avalonia.Media.Brushes.Black, Child = view, ClipToBounds = true };
+        _dockedMirrorSplitter = new GridSplitter
+        {
+            Width = 6, Background = Avalonia.Media.Brush.Parse("#2A2A2A"), ResizeDirection = GridResizeDirection.Columns,
+        };
+        grid.ColumnDefinitions = new ColumnDefinitions
+        {
+            new ColumnDefinition(1, GridUnitType.Star) { MinWidth = 320 },
+            new ColumnDefinition(GridLength.Auto),
+            new ColumnDefinition(new GridLength(DockedMirrorWidth(9, 20))) { MinWidth = 200 },
+        };
+        Grid.SetColumn(_dockedMirrorSplitter, 1);
+        Grid.SetColumn(_dockedMirrorPanel, 2);
+        grid.Children.Add(_dockedMirrorSplitter);
+        grid.Children.Add(_dockedMirrorPanel);
+        Activate();
+        view.FocusTyping();
+    }
+
+    /// <summary>Width for the mirror column so the phone fills the window's height.</summary>
+    private double DockedMirrorWidth(int width, int height)
+    {
+        var h = Math.Max(300, Bounds.Height - 34);
+        return Math.Clamp(Math.Round(h * width / height), 200, Math.Max(240, Bounds.Width * 0.6));
+    }
+
+    private void FitDockedMirror(int width, int height)
+    {
+        if (this.FindControl<Grid>("MainGrid") is { ColumnDefinitions.Count: 3 } grid)
+            grid.ColumnDefinitions[2].Width = new GridLength(DockedMirrorWidth(width, height));
+    }
+
+    /// <summary>Removes the mirror column; keepRunning moves the session to its own window, else it stops.</summary>
+    private void UndockMirror(bool keepRunning)
+    {
+        var view = _dockedMirror;
+        if (view == null) return;
+        _dockedMirror = null;
+        if (this.FindControl<Grid>("MainGrid") is { } grid)
+        {
+            if (_dockedMirrorPanel != null) grid.Children.Remove(_dockedMirrorPanel);
+            if (_dockedMirrorSplitter != null) grid.Children.Remove(_dockedMirrorSplitter);
+            grid.ColumnDefinitions.Clear();
+        }
+        if (_dockedMirrorPanel != null) _dockedMirrorPanel.Child = null;
+        _dockedMirrorPanel = null;
+        _dockedMirrorSplitter = null;
+        if (keepRunning)
+            new NexZen.Desktop.Mirror.MirrorWindow(view, start: false).Show();
+        else
+            view.Shutdown();
+    }
 
     /// <summary>Set when the window was opened from a workspace; shown first in the title.</summary>
     internal string? WorkspaceName
@@ -326,6 +453,9 @@ public partial class MainWindow : Window
             Opened += async (_, _) => await CheckPasswordVaultSetupReminderAsync();
         if (this.FindControl<Grid>("MainGrid") is { } findGrid)
             _findUi.Mount(findGrid);
+        NewTabBackground.Changed += OnNewTabBackgroundChanged;
+        Closed += (_, _) => UndockMirror(keepRunning: false);
+        Closed += (_, _) => NewTabBackground.Changed -= OnNewTabBackgroundChanged;
         if (_incognito && this.FindControl<Grid>("MainGrid") is { } incognitoGrid)
             AddIncognitoMarks(incognitoGrid);
         
@@ -352,6 +482,7 @@ public partial class MainWindow : Window
         if (this.FindControl<NexZen.Desktop.Controls.BlankPageAddressBar>("BlankPageAddressBar") is { } blankBar)
         {
             blankBar.NavigateRequested += (_, url) => NavigateFromMenu(url);
+            blankBar.OpenInNewTabRequested += (_, url) => OpenLinkInNewTab(url);
             blankBar.LockDomainRequested += async (_, _) => await LockCurrentDomainAsync();
         }
         
