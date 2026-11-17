@@ -3524,6 +3524,7 @@ public partial class MainWindow : Window
                 staleParent.Children.Remove(_superMenuControl);
 
             overlayGrid.Children.Add(_superMenuControl);
+            overlayGrid.Children.Add(BuildSuperMenuTabStrip());
 
             _menuAnchorX = x;
             _menuAnchorY = y;
@@ -3566,6 +3567,122 @@ public partial class MainWindow : Window
         });
     }
 
+    private const double SuperMenuTabStripHeight = 64;
+
+    /// <summary>
+    /// A row of the open tabs along the bottom of the window while the SuperMenu is open: favicon and
+    /// title on each card, the current tab highlighted, scrolled sideways (also with the mouse wheel)
+    /// when there are many. Clicking a card switches to that tab.
+    /// </summary>
+    private Control BuildSuperMenuTabStrip()
+    {
+        var row = new StackPanel
+        {
+            Orientation = Avalonia.Layout.Orientation.Horizontal,
+            Spacing = 8,
+            Margin = new Thickness(12, 0),
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+        };
+        Control? activeCard = null;
+        foreach (var tab in _viewModel?.Tabs.ToList() ?? [])
+        {
+            var active = tab.Id == _viewModel?.ActiveTab?.Id;
+            Control icon = tab.FaviconSource is IImage favicon
+                ? new Image { Source = favicon, Width = 16, Height = 16 }
+                : new Border
+                {
+                    Width = 16,
+                    Height = 16,
+                    CornerRadius = new CornerRadius(4),
+                    Background = new SolidColorBrush(Color.Parse("#D9D9D9")),
+                    Child = new TextBlock
+                    {
+                        Text = string.IsNullOrEmpty(tab.Title) ? "·" : tab.Title[..1].ToUpperInvariant(),
+                        FontSize = 10,
+                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                        VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                        Foreground = new SolidColorBrush(Color.Parse("#555555")),
+                    },
+                };
+            var title = new TextBlock
+            {
+                Text = string.IsNullOrWhiteSpace(tab.Title) ? tab.Url : tab.Title,
+                FontSize = 12.5,
+                FontWeight = active ? FontWeight.SemiBold : FontWeight.Normal,
+                Foreground = new SolidColorBrush(Color.Parse("#2A2A2A")),
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                MaxLines = 1,
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+            };
+            Grid.SetColumn(title, 1);
+            var card = new Border
+            {
+                Width = 210,
+                Height = 40,
+                Padding = new Thickness(10, 0),
+                CornerRadius = new CornerRadius(10),
+                // The current tab in the app's accent yellow, the others white.
+                Background = new SolidColorBrush(Color.Parse(active ? "#FFF3C4" : "#FFFFFF")),
+                BorderBrush = new SolidColorBrush(Color.Parse(active ? "#E2CC6B" : "#D6D6D6")),
+                BorderThickness = new Thickness(active ? 2 : 1),
+                Cursor = new Cursor(StandardCursorType.Hand),
+                Child = new Grid
+                {
+                    ColumnDefinitions = new ColumnDefinitions("Auto,*"),
+                    ColumnSpacing = 8,
+                    Children = { icon, title },
+                },
+            };
+            ToolTip.SetTip(card, string.IsNullOrWhiteSpace(tab.Title) ? tab.Url : tab.Title + "\n" + tab.Url);
+            var id = tab.Id;
+            card.PointerEntered += (_, _) => { if (!active) card.Background = new SolidColorBrush(Color.Parse("#F2F2F2")); };
+            card.PointerExited += (_, _) => { if (!active) card.Background = Brushes.White; };
+            card.PointerPressed += (_, e) =>
+            {
+                e.Handled = true;
+                CloseSuperMenu();
+                if (_viewModel?.Tabs.Any(t => t.Id == id) == true)
+                {
+                    _viewModel.SwitchTab(id);
+                    Dispatcher.UIThread.Post(() => GetActiveTabState()?.Browser?.Focus());
+                }
+            };
+            if (active)
+                activeCard = card;
+            row.Children.Add(card);
+        }
+
+        var scroller = new ScrollViewer
+        {
+            HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
+            VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
+            Content = row,
+        };
+        // The mouse wheel scrolls the row sideways.
+        scroller.AddHandler(PointerWheelChangedEvent, (_, e) =>
+        {
+            var delta = Math.Abs(e.Delta.X) > Math.Abs(e.Delta.Y) ? e.Delta.X : e.Delta.Y;
+            scroller.Offset = new Vector(Math.Max(0, scroller.Offset.X - delta * 80), 0);
+            e.Handled = true;
+        }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+
+        var strip = new Border
+        {
+            Height = SuperMenuTabStripHeight,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Bottom,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
+            Background = new SolidColorBrush(Color.FromArgb(0xE6, 0xF4, 0xF4, 0xF4)),
+            BorderBrush = new SolidColorBrush(Color.Parse("#DDDDDD")),
+            BorderThickness = new Thickness(0, 1, 0, 0),
+            Child = scroller,
+        };
+        // Clicks between cards keep the menu open (the area outside both closes it).
+        strip.PointerPressed += (_, e) => e.Handled = true;
+        if (activeCard != null)
+            Dispatcher.UIThread.Post(() => activeCard.BringIntoView(), DispatcherPriority.Background);
+        return strip;
+    }
+
     private void PositionSuperMenu()
     {
         if (_menuWindow == null) return;
@@ -3575,6 +3692,8 @@ public partial class MainWindow : Window
         if (windowW <= 1 || windowH <= 1) return;
 
         double availableW = windowW - MenuEdgePadding * 2;
+        // The open-tabs strip runs along the bottom while the menu is open; keep the menu above it.
+        windowH -= SuperMenuTabStripHeight;
         double availableH = windowH - MenuEdgePadding * 2;
         var size = _superMenuControl.FitToViewport(availableW, availableH);
 
